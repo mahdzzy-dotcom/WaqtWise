@@ -1,0 +1,66 @@
+{
+  "name": "waqtwise",
+  "productName": "WaqtWise",
+  "version": "0.7.0",
+  "description": "WaqtWise - task manager with prayer-time zones",
+  "private": true,
+  "author": "WaqtWise",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "adhan": "^4.4.3"
+  },
+  "devDependencies": {
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.waqtwise.app",
+    "productName": "WaqtWise",
+    "copyright": "WaqtWise",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WaqtWise",
+      "artifactName": "WaqtWise-Setup-${version}.exe",
+      "include": "build/installer.nsh",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
+    "protocols": [
+      {
+        "name": "WaqtWise",
+        "schemes": [
+          "waqtwise"
+        ]
+      }
+    ]
+  }
+}
