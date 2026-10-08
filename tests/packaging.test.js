@@ -71,7 +71,7 @@ test('icons exist and are big enough for Windows', () => {
   }
   const png = pngSize(path.join(root, 'build/icon.png'));
   assert.ok(png.width >= 256 && png.height >= 256 && png.width === png.height, `${png.width}x${png.height}`);
-  assert.ok(fs.existsSync(path.join(root, 'src/main/icon.png')), 'the icon used by the window ships inside the app');
+  assert.ok(fs.existsSync(path.join(root, 'src/main/icon.ico')), 'the icon used by the window ships inside the app');
   const tray = pngSize(path.join(root, 'src/main/tray-icon.png'));
   assert.deepEqual(tray, { width: 16, height: 16 });
   assert.equal(pngSize(path.join(root, 'src/main/tray-icon@2x.png')).width, 32);

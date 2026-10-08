@@ -239,6 +239,76 @@ class PlannerService {
     });
   }
 
+  // ---- missed reminders (shown on the bell) ------------------------------------------------------------------
+  // Reminders that came due while the computer was off or asleep. They stay on the bell until the person
+  // opens the task, marks it done, or clears the list.
+
+  missedList() {
+    if (!Array.isArray(this.data.missedReminders)) this.data.missedReminders = [];
+    return this.data.missedReminders;
+  }
+
+  // items: [{ taskId, dateKey, title, start, zoneName, alreadyStarted }] from the reminder engine.
+  addMissed(items) {
+    const list = this.missedList();
+    for (const i of items) {
+      if (list.some((m) => m.taskId === i.taskId && m.dateKey === i.dateKey)) continue;
+      list.push({
+        taskId: i.taskId,
+        dateKey: i.dateKey,
+        title: i.title,
+        startMs: new Date(i.start).getTime(),
+        zoneName: i.zoneName,
+        alreadyStarted: Boolean(i.alreadyStarted),
+      });
+    }
+    if (list.length > 50) list.splice(0, list.length - 50);
+    this.changed();
+  }
+
+  // Entries whose task was deleted, or whose occurrence is already done or removed, quietly drop out.
+  getMissed() {
+    const list = this.missedList();
+    const live = list.filter((m) => {
+      const task = this.data.tasks.find((t) => t.id === m.taskId);
+      return task && !task.completions[m.dateKey] && !(task.exceptions || []).includes(m.dateKey);
+    });
+    if (live.length !== list.length) {
+      this.data.missedReminders = live;
+      this.persist();
+    }
+    const todayKey = dateKey(this.now());
+    const yesterdayKey = addDaysToKey(todayKey, -1);
+    return live
+      .slice()
+      .sort((a, b) => b.startMs - a.startMs)
+      .map((m) => {
+        const k = dateKey(new Date(m.startMs));
+        const day = k === todayKey ? 'Today' : k === yesterdayKey ? 'Yesterday' : formatKeyShort(k);
+        return {
+          taskId: m.taskId,
+          dateKey: m.dateKey,
+          title: m.title,
+          whenLabel: `${day}, ${formatTime12(new Date(m.startMs))}`,
+          startLabel: formatTime12(new Date(m.startMs)),
+          zoneName: m.zoneName,
+          alreadyStarted: m.alreadyStarted,
+        };
+      });
+  }
+
+  dismissMissed({ taskId, dateKey: key }) {
+    this.data.missedReminders = this.missedList().filter((m) => !(m.taskId === taskId && m.dateKey === key));
+    this.changed();
+    return { ok: true };
+  }
+
+  clearMissed() {
+    this.data.missedReminders = [];
+    this.changed();
+    return { ok: true };
+  }
+
   // ---- the full-screen alert ----------------------------------------------------------------------------------
 
   // What the alert window shows for each task starting now (plain text and numbers only).
@@ -670,7 +740,7 @@ class PlannerService {
 
 // The names the window is allowed to call.
 const PUBLIC_METHODS = [
-  'bootstrap', 'getDay', 'getUpcoming', 'newTaskDefaults', 'getTaskForEdit', 'previewForm', 'saveTask',
+  'bootstrap', 'getDay', 'getUpcoming', 'getMissed', 'dismissMissed', 'clearMissed', 'newTaskDefaults', 'getTaskForEdit', 'previewForm', 'saveTask',
   'getReferenceChoices', 'getDeleteImpact', 'getAlertPreset', 'deleteTask', 'setDone', 'duplicateTask', 'getSettings', 'saveSettings', 'addCategory', 'updateCategory',
   'deleteCategory',
 ];

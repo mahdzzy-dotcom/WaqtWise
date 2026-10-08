@@ -441,6 +441,45 @@ test('Upcoming reminders for the bell', () => {
   assert.equal(list[0].title, 'Study SQL');
 });
 
+test('Missed reminders: kept for the bell until the task is opened, done, or the list is cleared', () => {
+  const { service, store } = makeService({ now: at(DAY, '10:00') });
+  const a = service.saveTask({ mode: 'create', form: form({ title: 'A' }) }).taskId;
+  const b = service.saveTask({ mode: 'create', form: form({ title: 'B' }) }).taskId;
+  const c = service.saveTask({ mode: 'create', form: form({ title: 'C' }) }).taskId;
+  const item = (taskId, title) => ({ taskId, dateKey: DAY, title, start: at(DAY, '08:00'), zoneName: 'Fajr → Dhuhr', alreadyStarted: true });
+
+  assert.deepEqual(service.getMissed(), []);
+  service.addMissed([item(a, 'A'), item(b, 'B'), item(c, 'C')]);
+  service.addMissed([item(a, 'A')]); // the same occurrence is never listed twice
+  assert.equal(service.getMissed().length, 3);
+  assert.equal(service.getMissed()[0].whenLabel, 'Today, 8:00 AM');
+
+  service.dismissMissed({ taskId: a, dateKey: DAY }); // opened the task
+  assert.deepEqual(service.getMissed().map((m) => m.title).sort(), ['B', 'C']);
+
+  service.setDone({ taskId: b, dateKey: DAY, done: true }); // done drops out by itself
+  assert.deepEqual(service.getMissed().map((m) => m.title), ['C']);
+
+  assert.equal(store.data.missedReminders.length, 1, 'the list is saved');
+  service.clearMissed();
+  assert.deepEqual(service.getMissed(), []);
+});
+
+test('Missed reminders of a deleted task disappear, and a backup import starts with an empty bell', () => {
+  const { service } = makeService();
+  const a = service.saveTask({ mode: 'create', form: form({ title: 'A' }) }).taskId;
+  service.addMissed([{ taskId: a, dateKey: DAY, title: 'A', start: at(DAY, '08:00'), zoneName: 'Fajr → Dhuhr', alreadyStarted: false }]);
+  service.deleteTask({ taskId: a, dateKey: DAY, scope: 'all' });
+  assert.deepEqual(service.getMissed(), []);
+
+  const b = service.saveTask({ mode: 'create', form: form({ title: 'B' }) }).taskId;
+  service.addMissed([{ taskId: b, dateKey: DAY, title: 'B', start: at(DAY, '08:00'), zoneName: 'Fajr → Dhuhr', alreadyStarted: false }]);
+  const backup = service.exportData();
+  assert.ok(!('missedReminders' in backup), 'missed reminders are not part of a backup');
+  service.importData(backup);
+  assert.deepEqual(service.getMissed(), []);
+});
+
 // ---- Export / import ------------------------------------------------------------------------------------------------------------
 test('Export then import restores everything', () => {
   const a = makeService();

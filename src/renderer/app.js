@@ -119,11 +119,15 @@
 
   WW.showDay = async function showDay(key) {
     try {
+      // Redrawing the same day (ticking a task, a background refresh) must not throw the page back to the top.
+      const keepScroll = WW.state.view === 'daily' && WW.state.dayKey === key;
+      const scrollY = window.scrollY;
       WW.state.view = 'daily';
       WW.state.dayKey = key;
       WW.state.day = await WW.call('getDay', key);
       WW.state.todayKey = WW.state.day.currentPlanningDayKey;
       renderDay();
+      if (keepScroll) window.scrollTo(0, scrollY);
     } catch (error) {
       WW.toast(error.message, 'error');
     }
@@ -141,6 +145,7 @@
 
   // Called after anything changes the data.
   WW.afterChange = async function afterChange() {
+    refreshBell();
     if (WW.state.view === 'daily') await WW.showDay(WW.state.dayKey);
   };
 
@@ -151,26 +156,60 @@
     document.getElementById('menu-panel').hidden = true;
   }
 
+  // The bell shows reminders that were missed while the computer was off or asleep.
+  // It shows a red number when there are some, and looks faded when there are none.
+  async function refreshBell() {
+    const button = document.getElementById('bell-btn');
+    if (!button) return null;
+    try {
+      const list = await WW.call('getMissed');
+      WW.state.missedCount = list.length;
+      button.classList.toggle('bell-empty', list.length === 0);
+      const label = list.length === 0 ? 'No missed reminders' : `${list.length} missed reminder${list.length === 1 ? '' : 's'}`;
+      button.title = label;
+      button.setAttribute('aria-label', label);
+      let badge = button.querySelector('.bell-badge');
+      if (list.length === 0) {
+        if (badge) badge.remove();
+      } else {
+        if (!badge) { badge = h('span', { class: 'bell-badge', 'aria-hidden': 'true' }); button.appendChild(badge); }
+        badge.textContent = list.length > 99 ? '99+' : String(list.length);
+      }
+      return list;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async function toggleBell() {
     const panel = document.getElementById('bell-panel');
     const wasHidden = panel.hidden;
     closePopovers();
     if (!wasHidden) return;
-    let list = [];
-    try {
-      list = await WW.call('getUpcoming');
-    } catch (error) {
-      WW.toast(error.message, 'error');
-    }
-    clear(panel).appendChild(h('h3', { text: 'Upcoming reminders' }));
-    if (list.length === 0) panel.appendChild(h('div', { class: 'empty-zone', text: 'No reminders in the next 7 days.' }));
+    const list = (await refreshBell()) || [];
+    clear(panel).appendChild(h('div', { class: 'popover-head' },
+      h('h3', { text: 'Missed reminders' }),
+      list.length ? h('button', {
+        class: 'link-btn', type: 'button', text: 'Clear all',
+        onclick: async () => {
+          try { await WW.call('clearMissed'); } catch (error) { WW.toast(error.message, 'error'); }
+          closePopovers();
+          refreshBell();
+        },
+      }) : null));
+    if (list.length === 0) panel.appendChild(h('div', { class: 'empty-zone', text: 'No missed reminders.' }));
     list.forEach((r) =>
       panel.appendChild(h('div', {
         class: 'upcoming-item', role: 'button', tabindex: '0',
-        onclick: () => { closePopovers(); WW.openTaskForm({ mode: 'edit', taskId: r.taskId, dateKey: r.dateKey }); },
+        onclick: async () => {
+          closePopovers();
+          try { await WW.call('dismissMissed', { taskId: r.taskId, dateKey: r.dateKey }); } catch (error) { /* the task may be gone */ }
+          refreshBell();
+          WW.openTaskForm({ mode: 'edit', taskId: r.taskId, dateKey: r.dateKey });
+        },
       },
-        h('div', { class: 'when', text: r.whenLabel }),
-        h('div', { class: 'what', text: `${r.title} · starts ${r.startLabel} · ${r.zoneName}` }))));
+        h('div', { class: 'when', text: r.title }),
+        h('div', { class: 'what', text: `${r.alreadyStarted ? 'Started' : 'Was due'} ${r.whenLabel} · ${r.zoneName}` }))));
     panel.hidden = false;
   }
 
@@ -239,7 +278,12 @@
     items.forEach((i) =>
       dlg.body.appendChild(h('div', {
         class: 'upcoming-item', role: 'button', tabindex: '0',
-        onclick: () => { dlg.close(); WW.openTaskForm({ mode: 'edit', taskId: i.taskId, dateKey: i.dateKey }); },
+        onclick: async () => {
+          dlg.close();
+          try { await WW.call('dismissMissed', { taskId: i.taskId, dateKey: i.dateKey }); } catch (error) { /* ignore */ }
+          refreshBell();
+          WW.openTaskForm({ mode: 'edit', taskId: i.taskId, dateKey: i.dateKey });
+        },
       },
         h('div', { class: 'when', text: i.title }),
         h('div', { class: 'what', text: `${i.alreadyStarted ? 'Started' : 'Starts'} at ${i.startLabel} · ${i.zoneName}` }))));
@@ -295,6 +339,7 @@
       return;
     }
 
+    refreshBell();
     if (!WW.state.settings.welcomeShown) WW.showWelcome();
 
     // The window keeps itself fresh: current zone, overdue marks, and changes made elsewhere.
@@ -302,8 +347,8 @@
     window.addEventListener('focus', () => { if (!anyDialogOpen()) WW.afterChange(); });
 
     if (window.api && window.api.on) {
-      window.api.on('data-changed', () => { if (!anyDialogOpen()) WW.afterChange(); });
-      window.api.on('missed', (items) => WW.showMissed(items));
+      window.api.on('data-changed', () => { if (!anyDialogOpen()) WW.afterChange(); else refreshBell(); });
+      window.api.on('missed', (items) => { refreshBell(); WW.showMissed(items); });
       window.api.on('open-task', ({ taskId, dateKey }) => {
         if (taskId && dateKey) WW.openTaskForm({ mode: 'edit', taskId, dateKey });
         else WW.showDay(WW.state.todayKey);

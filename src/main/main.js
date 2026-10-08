@@ -25,7 +25,7 @@ const { createElectronNotifier, findActionUrlInArgv, APP_ID, PROTOCOL } = requir
 const { createTray } = require('./tray');
 const { createAlertManager, isValidAction } = require('./alert-window');
 
-const ICON = path.join(__dirname, 'icon.png'); // window / taskbar icon
+const ICON = path.join(__dirname, 'icon.ico'); // window / taskbar icon (the .ico holds the small bold version Windows needs at 16-32 px)
 // Tray icon: tray-icon.png is 16x16; Electron also picks up tray-icon@1.5x / @2x / @3x for sharper icons on scaled screens.
 const TRAY_ICON = path.join(__dirname, 'tray-icon.png');
 const STARTUP_ARG = '--hidden'; // given to the app when Windows starts it at login
@@ -275,6 +275,7 @@ function startEngine() {
     notify,
     onMissed: (items, payload) => {
       notify(payload);
+      service.addMissed(items);
       sendToWindow('missed', items.map((i) => ({
         taskId: i.taskId,
         dateKey: i.dateKey,

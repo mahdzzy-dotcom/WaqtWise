@@ -3,7 +3,9 @@
 // The saved data and the export/import file format.
 //
 // Saved data (data.json in the user's profile folder):
-//   { version, settings, categories, tasks, reminderState }
+//   { version, settings, categories, tasks, reminderState, missedReminders }
+// (missedReminders: reminders that came due while the computer was off or asleep and were not handled yet;
+//  they are shown on the bell and are NOT part of the export file.)
 //
 // Export file (documented in docs/DATA_FORMAT.md):
 //   { app: 'waqtwise', formatVersion: 1, exportedAt, settings, categories, tasks }
@@ -36,6 +38,7 @@ function emptyData() {
     categories: defaultCategories(),
     tasks: [],
     reminderState: emptyState(),
+    missedReminders: [],
   };
 }
 
@@ -118,8 +121,20 @@ function normalizeData(raw) {
     ? { ...emptyState(), ...source.reminderState }
     : emptyState();
 
+  const missedReminders = (Array.isArray(source.missedReminders) ? source.missedReminders : [])
+    .filter((m) => isPlainObject(m) && typeof m.taskId === 'string' && typeof m.dateKey === 'string' && Number.isFinite(m.startMs))
+    .map((m) => ({
+      taskId: m.taskId,
+      dateKey: m.dateKey,
+      title: String(m.title || ''),
+      startMs: m.startMs,
+      zoneName: String(m.zoneName || ''),
+      alreadyStarted: Boolean(m.alreadyStarted),
+    }))
+    .slice(-50);
+
   return {
-    data: { version: DATA_VERSION, settings, categories, tasks, reminderState },
+    data: { version: DATA_VERSION, settings, categories, tasks, reminderState, missedReminders },
     warnings,
   };
 }
