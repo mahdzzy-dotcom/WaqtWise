@@ -121,7 +121,7 @@ class PlannerService {
     }
   }
 
-  viewOccurrence(o, planningKey, nowDate) {
+  viewOccurrence(o, planningKey, nowDate, conflictTitles) {
     const category = this.categoryOf(o.categoryId);
     return {
       id: o.id,
@@ -143,6 +143,8 @@ class PlannerService {
       hasFullScreen: Boolean(o.reminders && o.reminders.fullScreen),
       done: o.done,
       overlaps: Boolean(o.overlaps),
+      conflictWith: conflictTitles || [],
+      inProgress: !o.done && o.start.getTime() <= nowDate.getTime() && nowDate.getTime() < o.end.getTime(),
       extendsPastZoneEnd: Boolean(o.extendsPastZoneEnd),
       overdue: !o.done && o.end.getTime() <= nowDate.getTime(),
       followsTitle: this.followsTitle(o.startDefinition),
@@ -167,6 +169,27 @@ class PlannerService {
     const currentKey = currentPlanningDayKey(provider, nowDate);
     const endKey = addDaysToKey(planningKey, 1);
 
+    // Which tasks overlap which (titles for the "Conflict with ..." note) and the overlapping stretches.
+    const conflictTitles = new Map();
+    const conflictSpans = [];
+    for (let i = 0; i < occurrences.length; i++) {
+      for (let j = i + 1; j < occurrences.length; j++) {
+        const a = occurrences[i];
+        const b = occurrences[j];
+        if (!(a.start < b.end && b.start < a.end)) continue;
+        for (const [x, y] of [[a, b], [b, a]]) {
+          if (!conflictTitles.has(x.id)) conflictTitles.set(x.id, []);
+          if (!conflictTitles.get(x.id).includes(y.title)) conflictTitles.get(x.id).push(y.title);
+        }
+        conflictSpans.push({
+          from: Math.max(a.start.getTime(), b.start.getTime()),
+          to: Math.min(a.end.getTime(), b.end.getTime()),
+          a: a.title,
+          b: b.title,
+        });
+      }
+    }
+
     const zones = layout.zones.map((z) => {
       const span = z.end.getTime() - z.start.getTime();
       const isCurrent = planningKey === currentKey && nowMs >= z.start.getTime() && nowMs < z.end.getTime();
@@ -181,9 +204,24 @@ class PlannerService {
           done: o.done,
         };
       });
+      const zoneConflicts = conflictSpans
+        .map((c) => ({ ...c, from: Math.max(c.from, z.start.getTime()), to: Math.min(c.to, z.end.getTime()) }))
+        .filter((c) => c.to > c.from);
+      const confSegs = zoneConflicts.map((c) => ({
+        leftPct: ((c.from - z.start.getTime()) / span) * 100,
+        widthPct: Math.max(((c.to - c.from) / span) * 100, 0.8),
+        title: `Conflict: “${c.a}” and “${c.b}” overlap`,
+      }));
       return {
         index: z.index,
         name: z.name,
+        minutes: z.totalMinutes,
+        freeMinutes: z.freeMinutes,
+        minutesLeftLabel: isCurrent ? formatDuration(Math.max(0, Math.ceil((z.end.getTime() - nowMs) / 60000))) : '',
+        taskCount: z.tasks.length,
+        doneCount: z.tasks.filter((o) => o.done).length,
+        confSegs,
+        conflictCount: zoneConflicts.length,
         startLabel: formatTime12(z.start),
         endLabel: formatTime12(z.end),
         totalLabel: z.totalLabel,
@@ -192,7 +230,7 @@ class PlannerService {
         isCurrent,
         nowPct: isCurrent ? ((nowMs - z.start.getTime()) / span) * 100 : null,
         segments,
-        tasks: z.tasks.map((o) => this.viewOccurrence(o, planningKey, nowDate)),
+        tasks: z.tasks.map((o) => this.viewOccurrence(o, planningKey, nowDate, conflictTitles.get(o.id))),
         continued: z.continued.map((o) => ({
           taskId: o.taskId,
           dateKey: o.dateKey,
@@ -203,7 +241,21 @@ class PlannerService {
       };
     });
 
+    const listed = zones.reduce((n, z) => n + z.taskCount, 0);
+    const listedDone = zones.reduce((n, z) => n + z.doneCount, 0);
+    const currentZone = zones.find((z) => z.isCurrent) || null;
+    const dayStart = layout.zones[0].start.getTime();
+    const dayEnd = layout.zones[layout.zones.length - 1].end.getTime();
+    const inProgress = zones.flatMap((z) => z.tasks.filter((t) => t.inProgress).map((t) => t.title));
+
     return {
+      taskCount: listed,
+      doneCount: listedDone,
+      dayNowPct: planningKey === currentKey ? Math.min(100, Math.max(0, ((nowMs - dayStart) / (dayEnd - dayStart)) * 100)) : null,
+      currentZone: currentZone
+        ? { name: currentZone.name, timeLeftLabel: currentZone.minutesLeftLabel, freeLabel: currentZone.freeLabel, nextName: (zones[currentZone.index] || {}).name || '' }
+        : null,
+      inProgress,
       planningDayKey: planningKey,
       prevKey: addDaysToKey(planningKey, -1),
       nextKey: endKey,

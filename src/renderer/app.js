@@ -11,29 +11,96 @@
   const view = () => document.getElementById('view');
   const anyDialogOpen = () => document.querySelector('.overlay') !== null;
 
+  // The page follows the saved choice; "system" leaves it to the Windows setting (see styles.css).
+  const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function effectiveTheme() {
+    const saved = WW.state.settings && WW.state.settings.theme;
+    if (saved === 'light' || saved === 'dark') return saved;
+    return darkQuery && darkQuery.matches ? 'dark' : 'light';
+  }
+
+  function updateThemeButton() {
+    const button = document.getElementById('theme-btn');
+    if (!button) return;
+    const dark = effectiveTheme() === 'dark';
+    const label = dark ? 'Switch to light theme' : 'Switch to dark theme';
+    clear(button).appendChild(WW.icon(dark ? 'sun' : 'moon'));
+    button.title = label;
+    button.setAttribute('aria-label', label);
+  }
+
   WW.applyTheme = function applyTheme(theme) {
     if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
     else delete document.documentElement.dataset.theme;
+    updateThemeButton();
   };
 
+  async function toggleTheme() {
+    const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    try {
+      WW.state.settings = await WW.call('saveSettings', { theme: next });
+      WW.applyTheme(WW.state.settings.theme);
+      if (WW.state.view === 'settings') WW.renderSettings();
+    } catch (error) {
+      WW.toast(error.message, 'error');
+    }
+  }
+
   // ---- Daily View ---------------------------------------------------------------------------------------------
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  // A ring showing "pct" percent. Built with SVG elements (no markup from data).
+  function donut(size, radius, stroke, pct, color, numberSize) {
+    const c = 2 * Math.PI * radius;
+    const mid = size / 2;
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.setAttribute('aria-hidden', 'true');
+    const g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('transform', `rotate(-90 ${mid} ${mid})`);
+    [['var(--border)', c], [color, (c * pct) / 100]].forEach(([stroke_color, dash]) => {
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', String(mid));
+      circle.setAttribute('cy', String(mid));
+      circle.setAttribute('r', String(radius));
+      circle.setAttribute('fill', 'none');
+      circle.setAttribute('stroke', stroke_color);
+      circle.setAttribute('stroke-width', String(stroke));
+      circle.setAttribute('stroke-dasharray', `${dash} ${c}`);
+      g.appendChild(circle);
+    });
+    svg.appendChild(g);
+    return h('div', { class: 'donut', style: { width: `${size}px`, height: `${size}px` } },
+      svg, h('div', { class: 'donut-num', style: { fontSize: `${numberSize}px` }, text: `${pct}%` }));
+  }
+
+  const percent = (done, total) => (total ? Math.round((done / total) * 100) : 0);
 
   function taskRow(t) {
     const tags = [];
     if (t.categoryName) {
-      tags.push(h('span', { class: 'tag' }, h('span', { class: 'dot', style: { background: t.categoryColor } }), t.categoryName));
+      tags.push(h('span', { class: 'tag pill' }, h('span', { class: 'dot', style: { background: t.categoryColor } }), t.categoryName));
+    }
+    if (t.overdue) tags.push(h('span', { class: 'tag late', text: 'Not done' }));
+    if (t.inProgress) tags.push(h('span', { class: 'tag live', text: 'In progress' }));
+    if (t.overlaps) {
+      const names = (t.conflictWith || []).map((n) => `“${n}”`).join(', ');
+      tags.push(h('span', { class: 'tag warn conflict', title: 'Overlaps another task' },
+        WW.icon('warn', 13, 2.6), names ? `Conflict with ${names}` : 'Conflict'));
     }
     if (t.followsTitle) tags.push(h('span', { class: 'tag', title: 'Starts relative to another task', text: `↳ Follows “${t.followsTitle}”` }));
     if (t.startWarning) tags.push(h('span', { class: 'tag warn', title: t.startWarning, text: '⚠ Backup start time' }));
     if (t.isRecurring) tags.push(h('span', { class: 'tag', title: 'Repeats', text: '↻ Repeats' }));
     if (t.hasReminders) tags.push(h('span', { class: 'tag', title: 'Reminder on', text: '🔔 Reminder' }));
     if (t.hasFullScreen) tags.push(h('span', { class: 'tag', title: 'Full-screen alert at the start time', text: '⛶ Full-screen alert' }));
-    if (t.overlaps) tags.push(h('span', { class: 'tag warn', title: 'Overlaps another task', text: '⚠ Overlaps' }));
     if (t.extendsPastZoneEnd) tags.push(h('span', { class: 'tag', title: 'Continues into the next zone', text: '→ Continues into next zone' }));
-    if (t.overdue) tags.push(h('span', { class: 'tag late', text: 'Not done' }));
 
     const check = h('button', {
-      class: `check ${t.done ? 'on' : ''}`, type: 'button', text: '✓',
+      class: `check ${t.done ? 'on' : ''}`, type: 'button',
       'aria-label': t.done ? `Mark "${t.title}" as not done` : `Mark "${t.title}" as done`, 'aria-pressed': String(t.done),
       onclick: async (event) => {
         event.stopPropagation();
@@ -44,31 +111,35 @@
           WW.toast(error.message, 'error');
         }
       },
-    });
+    }, WW.icon('check', 15, 3.4));
 
     return h('div', {
-      class: `task ${t.done ? 'done' : ''} ${t.overdue ? 'overdue' : ''}`, role: 'button', tabindex: '0',
+      class: `task ${t.done ? 'done' : ''} ${t.overdue ? 'overdue' : ''} ${t.inProgress ? 'live' : ''}`, role: 'button', tabindex: '0',
       'aria-label': `${t.title}, ${t.startLabel}`,
       onclick: () => WW.openTaskForm({ mode: 'edit', taskId: t.taskId, dateKey: t.dateKey }),
       onkeydown: (e) => { if (e.key === 'Enter') WW.openTaskForm({ mode: 'edit', taskId: t.taskId, dateKey: t.dateKey }); },
     },
+      check,
       h('div', { class: 'task-time' }, t.startLabel, t.afterMidnight ? h('small', { text: 'next day' }) : null),
       h('div', { class: 'task-main' },
         h('div', { class: 'task-title', text: t.title }),
         tags.length ? h('div', { class: 'task-meta' }, tags) : null),
       h('div', { class: 'task-duration', text: t.durationLabel }),
-      h('span', { class: `prio ${t.priority}`, title: `${t.priority} priority` }),
-      check);
+      h('span', { class: `prio ${t.priority}`, title: `${t.priority} priority` }));
   }
 
   function zoneSection(z) {
-    const timeline = h('div', { class: 'timeline' });
+    const fill = h('div', { class: 'timeline-fill' });
+    // Square, touching pieces: back-to-back tasks look like one continuous band.
     z.segments.forEach((s) =>
-      timeline.appendChild(h('div', {
+      fill.appendChild(h('div', {
         class: `seg ${s.done ? 'done' : ''}`,
-        style: Object.assign({ left: `${s.leftPct}%`, width: `${s.widthPct}%` }, s.color ? { background: s.color } : {}),
+        style: { left: `${s.leftPct}%`, width: `${s.widthPct}%` },
       })));
-    if (z.nowPct !== null) timeline.appendChild(h('div', { class: 'now', style: { left: `calc(${z.nowPct}% - 1px)` }, title: 'Now' }));
+    const timeline = h('div', { class: 'timeline' }, fill);
+    z.confSegs.forEach((c) =>
+      timeline.appendChild(h('div', { class: 'conflict-seg', title: c.title, style: { left: `${c.leftPct}%`, width: `${c.widthPct}%` } })));
+    if (z.nowPct !== null) timeline.appendChild(h('div', { class: 'now', style: { left: `${z.nowPct}%` }, title: 'Now' }));
 
     const body = h('div', { class: 'zone-body' });
     z.continued.forEach((c) =>
@@ -81,15 +152,69 @@
     }
     z.tasks.forEach((t) => body.appendChild(taskRow(t)));
 
+    const pct = percent(z.doneCount, z.taskCount);
+    const conflictText = z.conflictCount === 1 ? '1 conflict' : `${z.conflictCount} conflicts`;
+
     return h('section', { class: `zone z${z.index} ${z.isCurrent ? 'current' : ''}`, 'aria-label': z.name },
-      h('div', { class: 'zone-head' },
-        h('h2', { class: 'zone-name' }, z.name.toUpperCase(), z.isCurrent ? h('span', { class: 'now-chip', text: 'NOW' }) : null),
-        h('div', { class: 'zone-times' }, h('span', { text: z.startLabel }), timeline, h('span', { text: z.endLabel })),
-        h('div', { class: 'zone-figures' },
-          h('span', {}, 'Total Duration:', h('b', { text: z.totalLabel })),
-          h('span', {}, 'Scheduled Duration:', h('b', { text: z.scheduledLabel })),
-          h('span', { class: 'free' }, 'Free Duration:', h('b', { text: z.freeLabel })))),
+      h('div', { class: 'zone-band' },
+        h('div', { class: 'zone-band-left' },
+          h('h2', { class: 'zone-name' }, z.name),
+          z.isCurrent ? h('span', { class: 'band-chip now-chip', text: 'NOW' }) : null,
+          z.conflictCount ? h('span', { class: 'band-chip conflict-chip' }, WW.icon('warn', 13, 2.6), conflictText) : null),
+        h('span', { class: 'zone-range', text: `${z.startLabel} – ${z.endLabel}` })),
+      h('div', { class: 'zone-summary' },
+        h('div', { class: 'zone-summary-main' },
+          h('div', { class: 'zone-times' }, h('span', { text: z.startLabel }), timeline, h('span', { text: z.endLabel })),
+          h('div', { class: 'zone-figures' },
+            h('span', { class: 'fig' }, 'Total ', h('b', { text: z.totalLabel })),
+            h('span', { class: 'fig' }, 'Scheduled ', h('b', { text: z.scheduledLabel })),
+            h('span', { class: 'fig free' }, 'Free ', h('b', { text: z.freeLabel })))),
+        h('div', { class: 'zone-done', role: 'img', 'aria-label': `${pct}% done: ${z.doneCount} of ${z.taskCount} tasks` },
+          donut(76, 30, 8, pct, 'var(--zf)', 16),
+          h('div', {},
+            h('div', { class: 'stat-label', text: 'Completed' }),
+            h('div', { class: 'stat-value' }, `${z.doneCount} of ${z.taskCount}`)))),
       body);
+  }
+
+  function heroCard(day) {
+    const cur = day.currentZone;
+    const pct = percent(day.doneCount, day.taskCount);
+    const title = cur ? cur.name : day.isCurrentDay ? 'Between zones' : 'Day overview';
+    const sub = cur
+      ? [h('b', { text: cur.timeLeftLabel }), cur.nextName ? ` until ${cur.nextName.split(' → ')[0]} · ` : ' left · ', `${cur.freeLabel} free in this zone`]
+      : [`${day.taskCount} task${day.taskCount === 1 ? '' : 's'} planned for this day`];
+
+    const bars = h('div', { class: 'strip-bars' });
+    const labels = h('div', { class: 'strip-labels' });
+    day.zones.forEach((z) => {
+      const grow = `${z.minutes} 1 0`;
+      const dim = day.isCurrentDay && !z.isCurrent ? 0.45 : 1;
+      bars.appendChild(h('div', { class: `z${z.index}`, style: { flex: grow, opacity: String(dim) }, title: `${z.name} · ${z.startLabel} – ${z.endLabel}` }));
+      labels.appendChild(h('div', { style: { flex: grow }, text: z.name.split(' → ')[0] }));
+    });
+    const strip = h('div', { class: 'day-strip' }, bars);
+    if (day.dayNowPct !== null) strip.appendChild(h('div', { class: 'strip-now', style: { left: `${day.dayNowPct}%` }, title: 'Now' }));
+    strip.appendChild(labels);
+
+    return h('section', { class: 'hero', 'aria-label': 'Right now' },
+      h('div', { class: 'hero-top' },
+        h('div', {},
+          h('div', { class: 'hero-eyebrow', text: cur ? 'RIGHT NOW' : day.isCurrentDay ? 'TODAY' : 'OVERVIEW' }),
+          h('div', { class: 'hero-title', text: title }),
+          h('div', { class: 'hero-sub' }, sub)),
+        h('div', { class: 'hero-cards' },
+          h('div', { class: 'stat-card', role: 'img', 'aria-label': `Done ${day.doneCount} of ${day.taskCount} tasks (${pct}%)` },
+            donut(64, 25, 7, pct, 'var(--accent)', 14),
+            h('div', {},
+              h('div', { class: 'stat-label', text: day.isCurrentDay ? 'Done today' : 'Done' }),
+              h('div', { class: 'stat-value' }, `${day.doneCount} `, h('small', { text: `/ ${day.taskCount}` })))),
+          day.isCurrentDay
+            ? h('div', { class: 'stat-card plain' },
+              h('div', { class: 'stat-label', text: 'In progress' }),
+              h('div', { class: 'stat-text', text: day.inProgress.length ? day.inProgress.join(', ') : '—' }))
+            : null)),
+      strip);
   }
 
   function renderDay() {
@@ -104,17 +229,18 @@
     root.append(
       h('div', { class: 'day-head' },
         h('div', { class: 'day-nav' },
-          h('button', { class: 'nav-btn', 'aria-label': 'Previous day', text: '◀', onclick: () => WW.showDay(day.prevKey) }),
+          h('button', { class: 'icon-btn', 'aria-label': 'Previous day', onclick: () => WW.showDay(day.prevKey) }, WW.icon('left', 20, 2.2)),
           h('div', {},
             h('h1', { class: 'day-title' }, day.dateTitle, day.isCurrentDay ? h('span', { class: 'today-badge', text: 'TODAY' }) : null),
             h('div', { class: 'day-sub' },
               day.hijri ? h('span', { class: 'hijri', text: day.hijri }) : null,
               h('span', { text: day.planningLine }))),
-          h('button', { class: 'nav-btn', 'aria-label': 'Next day', text: '▶', onclick: () => WW.showDay(day.nextKey) })),
+          h('button', { class: 'icon-btn', 'aria-label': 'Next day', onclick: () => WW.showDay(day.nextKey) }, WW.icon('right', 20, 2.2))),
         h('div', { class: 'day-actions' },
-          h('button', { class: 'btn', text: 'Today', onclick: () => WW.showDay(WW.state.todayKey || day.currentPlanningDayKey) }),
+          h('button', { class: 'btn tall', text: 'Today', onclick: () => WW.showDay(WW.state.todayKey || day.currentPlanningDayKey) }),
           picker)),
-      ...day.zones.map(zoneSection));
+      heroCard(day),
+      h('div', { class: 'zones' }, day.zones.map(zoneSection)));
   }
 
   WW.showDay = async function showDay(key) {
@@ -153,7 +279,6 @@
 
   function closePopovers() {
     document.getElementById('bell-panel').hidden = true;
-    document.getElementById('menu-panel').hidden = true;
   }
 
   // The bell shows reminders that were missed while the computer was off or asleep.
@@ -213,18 +338,36 @@
     panel.hidden = false;
   }
 
-  function toggleMenu() {
-    const panel = document.getElementById('menu-panel');
-    const wasHidden = panel.hidden;
+  function closeDrawer() {
+    document.getElementById('drawer').hidden = true;
+    document.getElementById('scrim').hidden = true;
+    document.getElementById('menu-btn').setAttribute('aria-expanded', 'false');
+  }
+
+  function openDrawer() {
     closePopovers();
-    if (!wasHidden) return;
-    const item = (label, fn) => h('button', { class: 'menu-item', text: label, onclick: () => { closePopovers(); fn(); } });
-    clear(panel).append(
-      item('Daily View', () => WW.showDaily()),
-      item('Settings', () => WW.showSettings()),
-      item('Export data…', () => WW.exportData()),
-      item('Import data…', () => WW.importData()));
-    panel.hidden = false;
+    const drawer = document.getElementById('drawer');
+    const item = (icon, label, fn, active) => h('button', {
+      class: `drawer-item ${active ? 'active' : ''}`, type: 'button',
+      onclick: () => { closeDrawer(); fn(); },
+    }, WW.icon(icon, 20, 1.9), label);
+    clear(drawer).append(
+      h('div', { class: 'drawer-head' },
+        h('img', { class: 'app-logo', src: 'logo.png', alt: '' }),
+        h('div', { class: 'drawer-title', text: 'WaqtWise' }),
+        h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Close menu', onclick: closeDrawer }, WW.icon('close', 18, 2))),
+      item('calendar', 'Daily View', () => WW.showDaily(), WW.state.view === 'daily'),
+      item('gear', 'Settings', () => WW.showSettings(), WW.state.view === 'settings'),
+      h('div', { class: 'drawer-sep' }),
+      h('div', { class: 'drawer-label', text: 'YOUR DATA' }),
+      item('export', 'Export data…', () => WW.exportData()),
+      item('import', 'Import data…', () => WW.importData()),
+      h('p', { class: 'drawer-note', text: 'Export saves a backup file on this computer. Importing a backup replaces all tasks, categories and settings.' }));
+    drawer.hidden = false;
+    document.getElementById('scrim').hidden = false;
+    document.getElementById('menu-btn').setAttribute('aria-expanded', 'true');
+    const first = drawer.querySelector('.drawer-item');
+    if (first) first.focus();
   }
 
   // ---- Export / import --------------------------------------------------------------------------------------------------
@@ -319,9 +462,18 @@
   // ---- Start-up -------------------------------------------------------------------------------------------------------------
 
   async function init() {
-    document.getElementById('menu-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
+    const put = (id, node) => clear(document.getElementById(id)).appendChild(node);
+    put('menu-btn', WW.icon('menu', 22, 1.9));
+    put('bell-btn', WW.icon('bell'));
+    clear(document.getElementById('add-btn')).append(WW.icon('plus', 16, 2.6), 'New task');
+    updateThemeButton();
+    if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener('change', updateThemeButton);
+
+    document.getElementById('menu-btn').addEventListener('click', (e) => { e.stopPropagation(); openDrawer(); });
+    document.getElementById('scrim').addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDrawer(); closePopovers(); } });
+    document.getElementById('theme-btn').addEventListener('click', toggleTheme);
     document.getElementById('bell-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleBell(); });
-    document.getElementById('settings-btn').addEventListener('click', () => { closePopovers(); WW.showSettings(); });
     document.getElementById('add-btn').addEventListener('click', () => {
       closePopovers();
       WW.openTaskForm({ mode: 'create', defaultKey: WW.state.dayKey || WW.state.todayKey });

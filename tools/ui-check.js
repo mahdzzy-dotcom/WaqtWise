@@ -11,6 +11,10 @@ const { createService, openApp, openAlertPage } = require('./ui-harness');
 const playwright = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 const executablePath = process.env.CHROMIUM_PATH || undefined;
 const shotDir = process.env.SHOT_DIR || null;
+// The font files are copied in by "npm install". Without them the browser reports "file not found" for the
+// font requests and the app uses the system font; that is not a page error.
+const fontsMissing = !fs.existsSync(require('path').join(__dirname, '..', 'src', 'renderer', 'fonts', 'PlusJakartaSans-latin-400.woff2'));
+const realErrors = (list) => list.filter((e) => !(fontsMissing && /ERR_FILE_NOT_FOUND/.test(e)));
 
 let passed = 0;
 async function step(name, fn) {
@@ -62,7 +66,7 @@ async function setTime(page, hour, minute, ampm) {
     assert.match(await page.textContent('.day-sub'), /Planning Day: Oct 4 → Oct 5/);
     assert.equal((await page.$$('.zone')).length, 5);
     assert.equal(await page.$$eval('.zone-name', (els) => els.map((e) => e.firstChild.textContent)).then((a) => a.join('|')),
-      'FAJR → DHUHR|DHUHR → ASR|ASR → MAGHRIB|MAGHRIB → ISHA|ISHA → FAJR');
+      'Fajr → Dhuhr|Dhuhr → Asr|Asr → Maghrib|Maghrib → Isha|Isha → Fajr');
   });
   await step('highlights the current zone only', async () => {
     const current = await page.$$eval('.zone.current', (els) => els.map((e) => e.getAttribute('aria-label')));
@@ -381,17 +385,48 @@ async function setTime(page, hour, minute, ampm) {
   });
 
   console.log('Bell, menu, missed reminders');
-  await step('bell lists upcoming reminders', async () => {
+  await step('bell is dim with no missed reminders, then shows a red count and lists them', async () => {
+    assert.equal(await page.locator('#bell-btn.bell-empty').count(), 1);
+    assert.equal(await page.locator('#bell-btn .bell-badge').count(), 0);
+    await page.click('#bell-btn');
+    await page.waitForSelector('#bell-panel:not([hidden])');
+    assert.match(await page.textContent('#bell-panel'), /No missed reminders/);
+    await page.click('#bell-btn');
+    service.addMissed([{ taskId: 't2', dateKey: '2026-10-04', title: 'Study SQL', start: new Date('2026-10-04T05:00:00Z'), zoneName: 'Fajr → Dhuhr', alreadyStarted: true }]);
+    await page.evaluate(() => window.__handlers['data-changed']());
+    await page.waitForSelector('#bell-btn .bell-badge');
+    assert.equal(await page.textContent('#bell-btn .bell-badge'), '1');
+    assert.equal(await page.locator('#bell-btn.bell-empty').count(), 0);
     await page.click('#bell-btn');
     await page.waitForSelector('#bell-panel:not([hidden]) .upcoming-item');
-    assert.ok((await page.$$('#bell-panel .upcoming-item')).length >= 1);
     await shot(page, 'bell');
-    await page.click('#bell-btn');
-    assert.equal(await page.isHidden('#bell-panel'), true);
+    await page.click('#bell-panel .upcoming-item');
+    await page.waitForSelector('.dialog');
+    await page.click('.dialog-header .icon-btn');
+    await page.waitForSelector('.dialog', { state: 'detached' });
+    assert.equal(await page.locator('#bell-btn .bell-badge').count(), 0);
+  });
+  await step('theme button switches between light and dark', async () => {
+    const before = await page.getAttribute('#theme-btn', 'aria-label');
+    await page.click('#theme-btn');
+    await page.waitForFunction(() => ['light', 'dark'].includes(document.documentElement.dataset.theme));
+    assert.notEqual(await page.getAttribute('#theme-btn', 'aria-label'), before);
+    await shot(page, 'daily-dark');
+    await page.click('#theme-btn');
+    await page.waitForTimeout(150);
+    assert.equal(await page.getAttribute('#theme-btn', 'aria-label'), before);
+  });
+  await step('side menu: Daily View, Settings, Export data, Import data; Esc closes it', async () => {
+    await page.click('#menu-btn');
+    const items = await page.$$eval('#drawer .drawer-item', (els) => els.map((e) => e.textContent.trim()));
+    assert.deepEqual(items, ['Daily View', 'Settings', 'Export data…', 'Import data…']);
+    await shot(page, 'drawer');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.isHidden('#drawer'), true);
   });
   await step('menu opens Settings', async () => {
     await page.click('#menu-btn');
-    await page.click('#menu-panel .menu-item:text-is("Settings")');
+    await page.click('#drawer .drawer-item:has-text("Settings")');
     await page.waitForSelector('.settings-section');
   });
   await step('missed-reminders summary dialog', async () => {
@@ -535,7 +570,7 @@ async function setTime(page, hour, minute, ampm) {
   });
 
   await step('no errors were reported by the page', async () => {
-    assert.deepEqual(errors, []);
+    assert.deepEqual(realErrors(errors), []);
   });
 
   await app.browser.close();
@@ -570,7 +605,7 @@ async function setTime(page, hour, minute, ampm) {
     assert.deepEqual(await p.evaluate(() => window.__actions), [['snooze', 'a1'], ['done', 'a1'], ['open', 'a1'], ['dismiss', 'a1']]);
     await p.keyboard.press('Escape');
     assert.deepEqual((await p.evaluate(() => window.__actions)).pop(), ['dismiss', 'a1'], 'Escape = Got it');
-    assert.deepEqual(alert.errors, []);
+    assert.deepEqual(realErrors(alert.errors), []);
     await alert.browser.close();
   });
   await step('the page follows the chosen look', async () => {
@@ -608,7 +643,7 @@ async function setTime(page, hour, minute, ampm) {
     await p.evaluate(([st]) => window.__render(st), [{ items: [{ id: 'y', taskId: 't', dateKey: 'd', title: 'No notes shown', notes: 'hidden', startLabel: '1:00 PM', endLabel: '2:00 PM',
       durationLabel: '1h 0m', zoneName: 'Dhuhr → Asr', zoneIndex: 2, categoryName: '', categoryColor: '', priority: 'Low', snoozed: false }], appearance: look, snoozeMinutes: 5, guardMs: 0 }]);
     assert.equal((await p.$$('.alert-notes')).length, 0);
-    assert.deepEqual(alert.errors, []);
+    assert.deepEqual(realErrors(alert.errors), []);
     await alert.browser.close();
   });
 
@@ -624,7 +659,7 @@ async function setTime(page, hour, minute, ampm) {
     await first.page.waitForSelector('.overlay', { state: 'detached' });
     assert.equal(fresh.getSettings().cityName, 'Alexandria');
     assert.equal(fresh.getSettings().welcomeShown, true);
-    assert.deepEqual(first.errors, []);
+    assert.deepEqual(realErrors(first.errors), []);
     await first.browser.close();
 
     // Opening the app again does not show it a second time

@@ -156,3 +156,20 @@ test('the guides for the user exist', () => {
     assert.ok(fs.existsSync(path.join(root, file)), `${file} exists`);
   }
 });
+
+test('fonts: the stylesheet, the copy script and the security policy agree', () => {
+  const css = fs.readFileSync(path.join(root, 'src/renderer/styles.css'), 'utf8');
+  const script = fs.readFileSync(path.join(root, 'tools/copy-fonts.js'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'src/renderer/index.html'), 'utf8');
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.ok(html.includes("font-src 'self'"));
+  assert.equal(pkg.scripts.postinstall, 'node tools/copy-fonts.js');
+  assert.ok(pkg.devDependencies['@fontsource/plus-jakarta-sans']);
+  const urls = [...css.matchAll(/url\('(fonts\/[^']+)'\)/g)].map((m) => m[1]);
+  assert.equal(urls.length, 10, '5 weights x latin / latin-ext');
+  for (const u of urls) {
+    const [, subset, weight] = u.match(/PlusJakartaSans-(latin(?:-ext)?)-(\d+)\.woff2$/);
+    assert.ok(script.includes(`'${subset}'`) && script.includes(String(weight)), `${u} is produced by copy-fonts.js`);
+  }
+  assert.ok(fs.existsSync(path.join(root, 'src/renderer/logo.png')));
+});

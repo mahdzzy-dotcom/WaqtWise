@@ -621,3 +621,29 @@ test('parseImport accepts a plain object too', () => {
   const { data } = parseImport(buildExport(emptyData()));
   assert.equal(data.categories.length, 5);
 });
+
+test('getDay: names the tasks that conflict, marks the overlapping stretch, and counts done tasks per zone and per day', () => {
+  const { service } = makeService();
+  const a = service.saveTask({ mode: 'create', form: form({ title: 'Call', start: fixed('09:00'), durationMinutes: 60 }) }).taskId;
+  service.saveTask({ mode: 'create', form: form({ title: 'Review', start: fixed('09:30'), durationMinutes: 60 }) });
+  service.saveTask({ mode: 'create', form: form({ title: 'Walk', start: fixed('06:00'), durationMinutes: 30 }) });
+  service.setDone({ taskId: a, dateKey: DAY, done: true });
+  const day = service.getDay(DAY);
+  const [call, review] = day.zones[0].tasks.filter((t) => t.title !== 'Walk');
+  assert.deepEqual(call.conflictWith, ['Review']);
+  assert.deepEqual(review.conflictWith, ['Call']);
+  assert.deepEqual(day.zones[0].tasks.find((t) => t.title === 'Walk').conflictWith, []);
+  assert.equal(day.zones[0].conflictCount, 1);
+  assert.equal(day.zones[0].confSegs.length, 1);
+  assert.ok(day.zones[0].confSegs[0].widthPct > 0 && day.zones[0].confSegs[0].leftPct > 0);
+  assert.equal(day.zones[0].taskCount, 3);
+  assert.equal(day.zones[0].doneCount, 1);
+  assert.equal(day.taskCount, 3);
+  assert.equal(day.doneCount, 1);
+  assert.equal(day.currentZone.name, 'Fajr → Dhuhr');
+  assert.equal(day.currentZone.nextName, 'Dhuhr → Asr');
+  assert.ok(day.dayNowPct > 0 && day.dayNowPct < 100);
+  assert.deepEqual(day.inProgress, ['Review']);
+  assert.equal(service.getDay('2026-10-05').currentZone, null);
+  assert.equal(service.getDay('2026-10-05').dayNowPct, null);
+});

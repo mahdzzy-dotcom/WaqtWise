@@ -9,12 +9,15 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
+    "fonts": "node tools/copy-fonts.js",
+    "postinstall": "node tools/copy-fonts.js",
     "dist": "electron-builder --win --publish never"
   },
   "dependencies": {
     "adhan": "^4.4.3"
   },
   "devDependencies": {
+    "@fontsource/plus-jakarta-sans": "^5.2.0",
     "electron": "^37.0.0",
     "electron-builder": "^26.0.0"
   },

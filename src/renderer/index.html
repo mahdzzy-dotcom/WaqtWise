@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>WaqtWise</title>
   <link rel="stylesheet" href="styles.css">
@@ -11,19 +11,22 @@
 <body>
   <header class="topbar">
     <div class="topbar-left">
-      <button id="menu-btn" class="icon-btn" title="Menu" aria-label="Menu">☰</button>
-      <h1 class="app-title">WAQTWISE</h1>
+      <button id="menu-btn" class="icon-btn" title="Menu" aria-label="Menu" aria-expanded="false"></button>
+      <img class="app-logo" src="logo.png" alt="">
+      <h1 class="app-title">WaqtWise</h1>
     </div>
     <div class="topbar-right">
+      <button id="theme-btn" class="icon-btn" title="Switch theme" aria-label="Switch theme"></button>
       <div class="bell-wrap">
-        <button id="bell-btn" class="icon-btn bell-empty" title="No missed reminders" aria-label="No missed reminders">🔔</button>
+        <button id="bell-btn" class="icon-btn bell-empty" title="No missed reminders" aria-label="No missed reminders"></button>
         <div id="bell-panel" class="popover" hidden></div>
       </div>
-      <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
-      <button id="add-btn" class="btn primary">+ Task</button>
+      <button id="add-btn" class="btn primary tall"></button>
     </div>
-    <div id="menu-panel" class="popover menu-panel" hidden></div>
   </header>
+
+  <div id="scrim" class="scrim" hidden></div>
+  <nav id="drawer" class="drawer" aria-label="Main menu" hidden></nav>
 
   <main id="view"></main>
 

@@ -28,6 +28,17 @@
     return el;
   };
 
+  // Small line icons (trusted constant markup, never built from user text).
+  const ICONS = {"menu": "<path d=\"M4 7h16M4 12h16M4 17h16\"/>", "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4\"/>", "moon": "<path d=\"M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z\"/>", "bell": "<path d=\"M6 9a6 6 0 0 1 12 0c0 6 2 7.5 2 7.5H4S6 15 6 9z\"/><path d=\"M10 20a2 2 0 0 0 4 0\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "left": "<path d=\"M15 6l-6 6 6 6\"/>", "right": "<path d=\"M9 6l6 6-6 6\"/>", "calendar": "<rect x=\"3.5\" y=\"5\" width=\"17\" height=\"15\" rx=\"2.5\"/><path d=\"M3.5 10h17M8 3v4M16 3v4\"/>", "gear": "<path d=\"M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z\"/><path d=\"M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z\"/>", "export": "<path d=\"M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14\"/>", "import": "<path d=\"M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19h14\"/>", "close": "<path d=\"M6 6l12 12M18 6L6 18\"/>", "check": "<path d=\"M5 12.5l4.5 4.5L19 7.5\"/>", "warn": "<path d=\"M12 3l10 18H2L12 3z\"/><path d=\"M12 10v5M12 18.2v.1\"/>"};
+  WW.icon = function icon(name, size, strokeWidth) {
+    const span = document.createElement('span');
+    span.style.display = 'inline-flex';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = `<svg width="${size || 22}" height="${size || 22}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth || 1.8}" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ''}</svg>`;
+    return span;
+  };
+  WW.iconNames = Object.keys(ICONS);
+
   WW.clear = function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
     return el;
