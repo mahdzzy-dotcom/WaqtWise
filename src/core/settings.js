@@ -39,6 +39,10 @@ const METHOD_LABELS = {
 
 const THEMES = ['light', 'dark', 'system'];
 
+// Sounds made inside the app (no sound files). The names are played by src/renderer/sounds.js.
+const DONE_SOUNDS = ['chime', 'pop', 'ding', 'sparkle', 'off'];
+const ALERT_SOUNDS = ['bell', 'alarm', 'rising', 'pulse', 'off'];
+
 // ---- Full-screen reminder appearance -------------------------------------------------------------------------
 
 const ALERT_FONTS = ['Segoe UI', 'Tahoma', 'Arial', 'Verdana', 'Georgia', 'Times New Roman'];
@@ -170,6 +174,12 @@ const DEFAULT_SETTINGS = {
   fullScreenAlerts: true, // master switch; each task still has its own switch
   fullScreenDefaultForNewTasks: false,
   alertScreens: 'all', // 'all' screens, or only the 'main' one
+  alertSound: 'bell', // played when a full-screen alert appears
+  alertSoundVolume: 70, // 0-100
+  alertSoundRepeat: false, // keep repeating until a button is pressed
+  // Sound when a task is marked done
+  doneSound: 'chime',
+  doneSoundVolume: 60, // 0-100
   alertAppearance: DEFAULT_ALERT_APPEARANCE,
 };
 
@@ -203,9 +213,14 @@ function validateSettings(settings) {
       errors.push('Choose at least one working day');
     }
   }
+  if ('doneSound' in s && !DONE_SOUNDS.includes(s.doneSound)) errors.push('Choose one of the sounds in the list');
+  if ('alertSound' in s && !ALERT_SOUNDS.includes(s.alertSound)) errors.push('Choose one of the sounds in the list');
+  for (const key of ['doneSoundVolume', 'alertSoundVolume']) {
+    if (key in s && !isWholeNumber(s[key], 0, 100)) errors.push('Volume must be a whole number from 0 to 100');
+  }
   if ('alertScreens' in s && !ALERT_SCREENS.includes(s.alertScreens)) errors.push('Choose all screens or the main screen');
   if ('alertAppearance' in s) errors.push(...validateAppearance(s.alertAppearance));
-  for (const key of ['notificationsEnabled', 'soundEnabled', 'zoneStartNotifications', 'startWithWindows', 'showBackgroundMessage', 'backgroundMessageShown', 'welcomeShown', 'fullScreenAlerts', 'fullScreenDefaultForNewTasks']) {
+  for (const key of ['notificationsEnabled', 'soundEnabled', 'zoneStartNotifications', 'startWithWindows', 'showBackgroundMessage', 'backgroundMessageShown', 'welcomeShown', 'fullScreenAlerts', 'fullScreenDefaultForNewTasks', 'alertSoundRepeat']) {
     if (key in s && typeof s[key] !== 'boolean') errors.push(`${key} must be on or off`);
   }
   return errors;
@@ -252,6 +267,8 @@ module.exports = {
   METHOD_KEYS,
   METHOD_LABELS,
   THEMES,
+  DONE_SOUNDS,
+  ALERT_SOUNDS,
   DEFAULT_SETTINGS,
   validateSettings,
   mergeSettings,

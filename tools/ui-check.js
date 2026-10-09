@@ -106,8 +106,7 @@ async function setTime(page, hour, minute, ampm) {
     const study = taskRow(page, 'Study SQL');
     assert.match(await study.textContent(), /8:00 AM/);
     assert.match(await study.textContent(), /1h 30m/);
-    assert.match(await study.textContent(), /Repeats/);
-    assert.match(await study.textContent(), /Reminder/);
+    assert.doesNotMatch(await study.textContent(), /Repeats|Reminder/, 'repeat and reminder tags are not shown on rows');
     assert.match(await study.textContent(), /Not done/);
     assert.match(await taskRow(page, 'Night reading').textContent(), /next day/);
     assert.match(await page.locator('.zone.z2 .continues').first().textContent(), /Continues from/);
@@ -234,7 +233,7 @@ async function setTime(page, hour, minute, ampm) {
     await shot(page, 'form-fullscreen-switch');
     await page.click('.dialog-footer .btn.primary');
     await page.waitForSelector('.dialog', { state: 'detached' });
-    assert.match(await taskRow(page, 'Alarm task').textContent(), /Full-screen alert/);
+    assert.doesNotMatch(await taskRow(page, 'Alarm task').textContent(), /Full-screen alert/, 'not shown on the row');
     assert.equal(service.data.tasks.find((t) => t.title === 'Alarm task').reminders.fullScreen, true);
   });
 
@@ -262,7 +261,7 @@ async function setTime(page, hour, minute, ampm) {
     await page.waitForSelector('.dialog', { state: 'detached' });
     const row = taskRow(page, 'Warm-up');
     assert.match(await row.textContent(), /9:45 AM/);
-    assert.match(await row.textContent(), /Follows “Study SQL”/);
+    assert.doesNotMatch(await row.textContent(), /Follows/, 'the "follows" tag is not shown on rows');
   });
   await step('when the other task is not on that day, a warning and the backup time are shown', async () => {
     await page.click('#add-btn');
@@ -337,6 +336,19 @@ async function setTime(page, hour, minute, ampm) {
     await row.locator('.check').click();
     await page.waitForSelector('.task.done:has-text("Exercise")');
     assert.equal(await row.locator('.check.on').count(), 1);
+  });
+  await step('a sound plays when a task is ticked as done, and not when the tick is taken back', async () => {
+    await page.evaluate(() => {
+      window.__played = [];
+      window.WW.sounds.play = (id, volume) => { window.__played.push([id, volume]); return { stop() {} }; };
+    });
+    const row = taskRow(page, 'Review notes');
+    await row.locator('.check').click();
+    await page.waitForSelector('.task.done:has-text("Review notes")');
+    assert.deepEqual(await page.evaluate(() => window.__played), [['chime', 60]]);
+    await row.locator('.check').click();
+    await page.waitForSelector('.task:not(.done):has-text("Review notes")');
+    assert.deepEqual(await page.evaluate(() => window.__played), [['chime', 60]], 'no sound for un-ticking');
   });
   await step('edit a one-off task', async () => {
     await taskRow(page, 'Dentist').click();
@@ -462,7 +474,7 @@ async function setTime(page, hour, minute, ampm) {
   console.log('Settings');
   await step('every section is there', async () => {
     const titles = await page.$$eval('.settings-section h2', (els) => els.map((e) => e.textContent));
-    assert.deepEqual(titles, ['Prayer Times', 'Reminders & Notifications', 'Application', 'Full-screen reminder', 'Categories', 'Data']);
+    assert.deepEqual(titles, ['Prayer Times', 'Reminders & Notifications', 'Application', 'Full-screen reminder', 'Sounds', 'Categories', 'Data']);
     await shot(page, 'settings');
   });
   await step('prayer adjustment is saved and moves the zone boundary', async () => {
@@ -488,6 +500,28 @@ async function setTime(page, hour, minute, ampm) {
     await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
     await page.selectOption('select[aria-label="Theme"]', 'system');
     await page.waitForFunction(() => document.documentElement.dataset.theme === undefined);
+  });
+  await step('sounds: choices and volumes are saved, Preview plays the chosen sound, repeat switch saves', async () => {
+    await page.evaluate(() => {
+      window.__played = [];
+      window.WW.sounds.play = (id, volume) => { window.__played.push([id, volume]); return { stop() {} }; };
+    });
+    await page.selectOption('select[aria-label="Task done sound"]', 'ding');
+    await page.waitForTimeout(150);
+    assert.equal(service.getSettings().doneSound, 'ding');
+    await page.fill('input[aria-label="Task done volume"]', '35');
+    await page.dispatchEvent('input[aria-label="Task done volume"]', 'change');
+    await page.waitForTimeout(150);
+    assert.equal(service.getSettings().doneSoundVolume, 35);
+    await page.click('button[aria-label="Preview the task done sound"]');
+    assert.deepEqual(await page.evaluate(() => window.__played), [['ding', 35]]);
+    await page.selectOption('select[aria-label="Full-screen alert sound"]', 'rising');
+    await page.waitForTimeout(150);
+    assert.equal(service.getSettings().alertSound, 'rising');
+    await page.click('label:has-text("Keep repeating until a button is pressed") input');
+    await page.waitForTimeout(150);
+    assert.equal(service.getSettings().alertSoundRepeat, true);
+    await shot(page, 'settings-sounds');
   });
   await step('toggles save: sound, zone-start, start with Windows', async () => {
     await page.click('label:has-text("Play a sound") input');
@@ -626,6 +660,37 @@ async function setTime(page, hour, minute, ampm) {
     assert.deepEqual(await p.evaluate(() => window.__actions), [['snooze', 'a1'], ['done', 'a1'], ['open', 'a1'], ['dismiss', 'a1']]);
     await p.keyboard.press('Escape');
     assert.deepEqual((await p.evaluate(() => window.__actions)).pop(), ['dismiss', 'a1'], 'Escape = Got it');
+    assert.deepEqual(realErrors(alert.errors), []);
+    await alert.browser.close();
+  });
+  await step('the alert rings once per arrival, on one screen only, repeats if asked, and stops when a button is pressed', async () => {
+    const alert = await openAlertPage({ playwright, executablePath });
+    const p = alert.page;
+    const base = require('../src/core').DEFAULT_ALERT_APPEARANCE;
+    const item = (id) => ({ id, taskId: `t-${id}`, dateKey: '2026-10-04', title: `Task ${id}`, notes: '', startLabel: '12:00 PM', endLabel: '12:45 PM',
+      durationLabel: '45m', zoneName: 'Dhuhr → Asr', zoneIndex: 2, categoryName: '', categoryColor: '', priority: 'Low', snoozed: false });
+    await p.evaluate(() => {
+      window.__rings = [];
+      window.WW.sounds.play = (id, volume, options) => {
+        const ring = { id, volume, repeat: Boolean(options && options.repeat), stopped: false };
+        window.__rings.push(ring);
+        return { stop() { ring.stopped = true; } };
+      };
+    });
+    const render = (extra) => p.evaluate(([st]) => window.__render(st), [{ items: [item('a1'), item('a2')], appearance: base, snoozeMinutes: 5, guardMs: 0,
+      sound: { id: 'alarm', volume: 80, repeat: true }, soundSeq: 1, soundHere: true, ...extra }]);
+    await render({});
+    assert.deepEqual(await p.evaluate(() => window.__rings), [{ id: 'alarm', volume: 80, repeat: true, stopped: false }]);
+    await render({}); // same arrival drawn again: no second ring
+    assert.equal(await p.evaluate(() => window.__rings.length), 1);
+    await p.click('button[data-action="dismiss"]');
+    assert.equal(await p.evaluate(() => window.__rings[0].stopped), true, 'pressing a button stops the sound');
+    await render({ soundSeq: 2 }); // more tasks arrived
+    assert.equal(await p.evaluate(() => window.__rings.length), 2);
+    await render({ soundSeq: 3, soundHere: false }); // another screen: silent
+    assert.equal(await p.evaluate(() => window.__rings.length), 2);
+    await render({ soundSeq: 4, sound: { id: 'off', volume: 80, repeat: false } });
+    assert.equal(await p.evaluate(() => window.__rings.length), 2, '"Off" makes no sound');
     assert.deepEqual(realErrors(alert.errors), []);
     await alert.browser.close();
   });

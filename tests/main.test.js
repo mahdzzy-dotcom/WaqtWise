@@ -601,6 +601,7 @@ test('Full-screen alert: at the start time one borderless window covers each scr
     assert.equal(o.webPreferences.contextIsolation, true);
     assert.equal(o.webPreferences.nodeIntegration, false);
     assert.equal(o.webPreferences.sandbox, true);
+    assert.equal(o.webPreferences.autoplayPolicy, 'no-user-gesture-required', 'the reminder sound plays without a click');
     assert.ok(o.webPreferences.preload.endsWith('alert-preload.js') && fs.existsSync(o.webPreferences.preload));
     assert.ok(win.file.endsWith('alert.html') && fs.existsSync(win.file));
     assert.deepEqual(win.alwaysOnTop, [true, 'screen-saver']);
@@ -632,6 +633,26 @@ test('Full-screen alert: the page is told what to show (title, notes, times, zon
   assert.equal(state.appearance.backgroundColor, '#0f172a');
   assert.equal(state.snoozeMinutes, 5);
   assert.equal(state.guardMs, 1500);
+  assert.deepEqual(state.sound, { id: 'bell', volume: 70, repeat: false });
+  assert.equal(state.soundSeq, 1);
+  assert.equal(state.soundHere, true);
+  app.cleanup();
+});
+
+test('Full-screen alert: only one screen rings, and the sound comes from Settings', async () => {
+  const app = await launch();
+  await app.svc('saveSettings', { alertSound: 'alarm', alertSoundVolume: 40, alertSoundRepeat: true });
+  await app.svc('saveTask', { mode: 'create', form: alertForm() });
+  app.fire(11, 59, 50);
+  app.fire(12, 0, 0);
+  const wins = app.alertWindows();
+  assert.ok(wins.length >= 1);
+  const states = wins.map((w) => {
+    app.ipcOn['alert-ready']({ sender: w.webContents });
+    return w.sent.find(([c]) => c === 'alert-render')[1];
+  });
+  assert.deepEqual(states.map((st) => st.soundHere), wins.map((_, i) => i === 0), 'only the first window rings');
+  assert.deepEqual(states[0].sound, { id: 'alarm', volume: 40, repeat: true });
   app.cleanup();
 });
 

@@ -10,6 +10,13 @@
   let guardUntil = 0;
   let lastItemId = null;
   let guardTimer = null;
+  let lastSoundSeq = 0;
+  let ringing = null; // the sound that is playing now
+
+  function stopSound() {
+    if (ringing) ringing.stop();
+    ringing = null;
+  }
 
   function current() {
     return state && state.items.length > 0 ? state.items[0] : null;
@@ -26,10 +33,10 @@
       snoozeMinutes: state.snoozeMinutes,
       guardActive,
     }, {
-      dismiss: () => window.alertApi.action('dismiss', item.id),
-      snooze: () => window.alertApi.action('snooze', item.id),
-      done: () => window.alertApi.action('done', item.id),
-      open: () => window.alertApi.action('open', item.id),
+      dismiss: () => { stopSound(); window.alertApi.action('dismiss', item.id); },
+      snooze: () => { stopSound(); window.alertApi.action('snooze', item.id); },
+      done: () => { stopSound(); window.alertApi.action('done', item.id); },
+      open: () => { stopSound(); window.alertApi.action('open', item.id); },
     });
     if (guardActive) {
       clearTimeout(guardTimer);
@@ -44,6 +51,14 @@
     const first = !state;
     state = next;
     const item = current();
+    // Ring once for each arrival of tasks (and only on one screen, even when several are covered).
+    if (next.soundSeq !== lastSoundSeq) {
+      lastSoundSeq = next.soundSeq;
+      stopSound();
+      if (next.soundHere && next.sound && next.sound.id !== 'off') {
+        ringing = WW.sounds.play(next.sound.id, next.sound.volume, { repeat: next.sound.repeat });
+      }
+    }
     // A new task on screen (or the first one): ignore presses for a moment so nothing is dismissed by accident.
     if (item && (first || item.id !== lastItemId)) {
       guardUntil = performance.now() + next.guardMs;
@@ -58,6 +73,7 @@
     if (!item || performance.now() < guardUntil) return;
     if (event.key === 'Escape') {
       event.preventDefault();
+      stopSound();
       window.alertApi.action('dismiss', item.id);
     }
   });

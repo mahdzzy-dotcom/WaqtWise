@@ -154,6 +154,7 @@ test('Service: alert payload, config, presets and the sample', () => {
   assert.equal(config.screens, 'all');
   assert.equal(config.snoozeMinutes, 5);
   assert.deepEqual(config.appearance, DEFAULT_ALERT_APPEARANCE);
+  assert.deepEqual(config.sound, { id: 'bell', volume: 70, repeat: false });
   config.appearance.backgroundColor = '#000000';
   assert.equal(service.getSettings().alertAppearance.backgroundColor, '#0f172a', 'a copy, not the real settings');
 
@@ -182,4 +183,23 @@ test('Service: the task switch is saved, can differ per occurrence, and defaults
   assert.equal(has('2026-10-05'), true);
   assert.equal(has('2026-10-06'), false, 'switched off for that one day');
   assert.equal(has('2026-10-07'), true);
+});
+
+test('Sound settings: defaults, choices and volumes are validated, and bad saved values fall back', () => {
+  const { mergeSettings, sanitizeSettings, DEFAULT_SETTINGS, DONE_SOUNDS, ALERT_SOUNDS } = require('../src/core/settings');
+  assert.equal(DEFAULT_SETTINGS.doneSound, 'chime');
+  assert.equal(DEFAULT_SETTINGS.doneSoundVolume, 60);
+  assert.equal(DEFAULT_SETTINGS.alertSound, 'bell');
+  assert.equal(DEFAULT_SETTINGS.alertSoundVolume, 70);
+  assert.equal(DEFAULT_SETTINGS.alertSoundRepeat, false);
+  for (const id of DONE_SOUNDS) assert.equal(mergeSettings(DEFAULT_SETTINGS, { doneSound: id }).doneSound, id);
+  for (const id of ALERT_SOUNDS) assert.equal(mergeSettings(DEFAULT_SETTINGS, { alertSound: id }).alertSound, id);
+  assert.ok(DONE_SOUNDS.includes('off') && ALERT_SOUNDS.includes('off'));
+  assert.throws(() => mergeSettings(DEFAULT_SETTINGS, { doneSound: 'siren' }), /sounds in the list/);
+  assert.throws(() => mergeSettings(DEFAULT_SETTINGS, { alertSound: 'chime' }), /sounds in the list/, 'a done sound is not an alert sound');
+  assert.throws(() => mergeSettings(DEFAULT_SETTINGS, { doneSoundVolume: 101 }), /Volume/);
+  assert.throws(() => mergeSettings(DEFAULT_SETTINGS, { alertSoundVolume: -1 }), /Volume/);
+  assert.throws(() => mergeSettings(DEFAULT_SETTINGS, { alertSoundRepeat: 'yes' }), /on or off/);
+  const clean = sanitizeSettings({ doneSound: 'nope', doneSoundVolume: 20, alertSound: 'pulse', alertSoundRepeat: 'x' });
+  assert.deepEqual([clean.doneSound, clean.doneSoundVolume, clean.alertSound, clean.alertSoundRepeat], ['chime', 20, 'pulse', false]);
 });

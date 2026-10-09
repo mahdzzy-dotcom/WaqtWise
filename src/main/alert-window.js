@@ -18,14 +18,19 @@ function createAlertManager({ BrowserWindow, screen, preloadPath, pagePath, getC
   let items = [];
   let windows = [];
   let guardMs = GUARD_FIRST_MS;
+  let soundSeq = 0; // goes up each time new tasks arrive, so the page rings once per arrival
 
-  function payload() {
+  // "soundHere" is true for one window only (the first), so several screens do not ring at once.
+  function payload(win) {
     const config = getConfig();
     return {
       items,
       appearance: config.appearance,
       snoozeMinutes: config.snoozeMinutes,
       guardMs,
+      sound: config.sound || { id: 'off', volume: 0, repeat: false },
+      soundSeq,
+      soundHere: Boolean(win) && win === windows.find(alive),
     };
   }
 
@@ -34,8 +39,7 @@ function createAlertManager({ BrowserWindow, screen, preloadPath, pagePath, getC
   }
 
   function broadcast() {
-    const data = payload();
-    for (const win of windows) if (alive(win)) win.webContents.send('alert-render', data);
+    for (const win of windows) if (alive(win)) win.webContents.send('alert-render', payload(win));
   }
 
   function closeAll() {
@@ -43,6 +47,7 @@ function createAlertManager({ BrowserWindow, screen, preloadPath, pagePath, getC
     windows = [];
     items = [];
     guardMs = GUARD_FIRST_MS;
+    soundSeq = 0;
     for (const win of open) {
       if (alive(win)) win.destroy();
     }
@@ -76,6 +81,7 @@ function createAlertManager({ BrowserWindow, screen, preloadPath, pagePath, getC
           contextIsolation: true,
           nodeIntegration: false,
           sandbox: true,
+          autoplayPolicy: 'no-user-gesture-required', // the reminder sound must play without a click
         },
       });
       win.setMenuBarVisibility(false);
@@ -111,6 +117,7 @@ function createAlertManager({ BrowserWindow, screen, preloadPath, pagePath, getC
         added += 1;
       }
       if (added === 0) return;
+      soundSeq += 1;
       if (windows.length === 0) {
         guardMs = GUARD_FIRST_MS;
         openWindows();
@@ -121,7 +128,9 @@ function createAlertManager({ BrowserWindow, screen, preloadPath, pagePath, getC
 
     // The page asks for what to draw (once it has loaded).
     sendTo(webContents) {
-      if (webContents && !webContents.isDestroyed()) webContents.send('alert-render', payload());
+      if (!webContents || webContents.isDestroyed()) return;
+      const win = windows.find((w) => alive(w) && w.webContents === webContents);
+      webContents.send('alert-render', payload(win));
     },
 
     owns(webContents) {

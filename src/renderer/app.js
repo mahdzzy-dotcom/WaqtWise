@@ -92,11 +92,7 @@
       tags.push(h('span', { class: 'tag warn conflict', title: 'Overlaps another task' },
         WW.icon('warn', 13, 2.6), names ? `Conflict with ${names}` : 'Conflict'));
     }
-    if (t.followsTitle) tags.push(h('span', { class: 'tag', title: 'Starts relative to another task', text: `↳ Follows “${t.followsTitle}”` }));
     if (t.startWarning) tags.push(h('span', { class: 'tag warn', title: t.startWarning, text: '⚠ Backup start time' }));
-    if (t.isRecurring) tags.push(h('span', { class: 'tag', title: 'Repeats', text: '↻ Repeats' }));
-    if (t.hasReminders) tags.push(h('span', { class: 'tag', title: 'Reminder on', text: '🔔 Reminder' }));
-    if (t.hasFullScreen) tags.push(h('span', { class: 'tag', title: 'Full-screen alert at the start time', text: '⛶ Full-screen alert' }));
     if (t.extendsPastZoneEnd) tags.push(h('span', { class: 'tag', title: 'Continues into the next zone', text: '→ Continues into next zone' }));
 
     const check = h('button', {
@@ -106,6 +102,8 @@
         event.stopPropagation();
         try {
           await WW.call('setDone', { taskId: t.taskId, dateKey: t.dateKey, done: !t.done });
+          // A small sound when a task becomes done (not when the tick is taken back).
+          if (!t.done && WW.state.settings) WW.sounds.play(WW.state.settings.doneSound, WW.state.settings.doneSoundVolume);
           WW.afterChange();
         } catch (error) {
           WW.toast(error.message, 'error');
@@ -472,7 +470,7 @@
   };
 
   // The splash covers the window for a moment at every start; a click or key skips it.
-  const SPLASH_MS = 1600;
+  const SPLASH_MS = 3200;
   const splashStarted = Date.now();
   function hideSplash() {
     const splash = document.getElementById('splash');

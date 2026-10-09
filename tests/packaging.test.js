@@ -173,3 +173,17 @@ test('fonts: the stylesheet, the copy script and the security policy agree', () 
   }
   assert.ok(fs.existsSync(path.join(root, 'src/renderer/logo.png')));
 });
+
+test('sounds: the lists in the window code match the settings, and both pages load the sound code', () => {
+  const { DONE_SOUNDS, ALERT_SOUNDS } = require('../src/core/settings');
+  const code = fs.readFileSync(path.join(root, 'src/renderer/sounds.js'), 'utf8');
+  const listIds = (name) => [...code.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\];`))[1].matchAll(/\['(\w+)'/g)].map((m) => m[1]);
+  assert.deepEqual(listIds('DONE_OPTIONS'), DONE_SOUNDS);
+  assert.deepEqual(listIds('ALERT_OPTIONS'), ALERT_SOUNDS);
+  for (const id of [...DONE_SOUNDS, ...ALERT_SOUNDS].filter((i) => i !== 'off')) {
+    assert.ok(new RegExp(`\\b${id}\\(ctx, out, t\\)`).test(code), `a recipe exists for "${id}"`);
+  }
+  for (const page of ['index.html', 'alert.html']) {
+    assert.ok(fs.readFileSync(path.join(root, 'src/renderer', page), 'utf8').includes('<script src="sounds.js"></script>'), `${page} loads sounds.js`);
+  }
+});

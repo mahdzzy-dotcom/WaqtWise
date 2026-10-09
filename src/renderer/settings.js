@@ -48,6 +48,41 @@
     return [h('label', { text: label }), control];
   }
 
+  // One sound choice: a list, a volume slider and a "Preview" button. Each change is saved at once.
+  function soundPicker({ label, options, idKey, volumeKey, extra }) {
+    const st = WW.state.settings;
+    let id = st[idKey];
+    let volume = st[volumeKey];
+    const readout = h('span', { class: 'vol-readout', text: `${volume}%` });
+    const select = h('select', {
+      class: 'sel-auto', 'aria-label': `${label} sound`,
+      onchange: (e) => { id = e.target.value; save({ [idKey]: id }); },
+    }, options.map(([value, text]) => h('option', { value, text, selected: id === value })));
+    const slider = h('input', {
+      type: 'range', min: '0', max: '100', step: '5', value: String(volume), class: 'vol', 'aria-label': `${label} volume`,
+      oninput: (e) => { volume = Number(e.target.value); readout.textContent = `${volume}%`; },
+      onchange: (e) => { volume = Number(e.target.value); save({ [volumeKey]: volume }); },
+    });
+    const preview = h('button', {
+      class: 'btn small', type: 'button', text: 'Preview', 'aria-label': `Preview the ${label.toLowerCase()} sound`,
+      onclick: () => WW.sounds.play(id, volume),
+    });
+    return h('div', {}, h('div', { class: 'row' }, select, slider, readout, preview), extra || null);
+  }
+
+  function soundsSection() {
+    const st = WW.state.settings;
+    return section('Sounds',
+      h('p', { class: 'dialog-message', text: 'Sounds are made by WaqtWise itself and play only while it is running. They are separate from the Windows notification sound above.' }),
+      h('div', { class: 'settings-grid' },
+        row('Task done', soundPicker({ label: 'Task done', options: WW.sounds.DONE_OPTIONS, idKey: 'doneSound', volumeKey: 'doneSoundVolume',
+          extra: h('p', { class: 'hint', text: 'Plays when you tick a task as done.' }) })),
+        row('Full-screen alert', soundPicker({ label: 'Full-screen alert', options: WW.sounds.ALERT_OPTIONS, idKey: 'alertSound', volumeKey: 'alertSoundVolume',
+          extra: h('div', {},
+            toggle('Keep repeating until a button is pressed', st.alertSoundRepeat, (v) => save({ alertSoundRepeat: v })),
+            h('p', { class: 'hint', text: 'Plays when a full-screen alert appears (on one screen only, even if several are covered).' })) }))));
+  }
+
   function categoriesSection() {
     const list = h('div');
     const draw = () => {
@@ -295,6 +330,8 @@
           row('Working days', h('div', {}, workingDays, h('p', { class: 'hint', text: 'Used by "last working day" repeat rules.' }))))),
 
       alertSection(),
+
+      soundsSection(),
 
       categoriesSection(),
 

@@ -389,7 +389,12 @@ class PlannerService {
   // How the alert should look and behave right now.
   getAlertConfig() {
     const s = this.settings;
-    return { appearance: copy(s.alertAppearance), screens: s.alertScreens, snoozeMinutes: s.snoozeMinutes };
+    return {
+      appearance: copy(s.alertAppearance),
+      screens: s.alertScreens,
+      snoozeMinutes: s.snoozeMinutes,
+      sound: { id: s.alertSound, volume: s.alertSoundVolume, repeat: s.alertSoundRepeat },
+    };
   }
 
   // One of the ready-made looks.

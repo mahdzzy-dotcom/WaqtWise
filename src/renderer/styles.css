@@ -414,3 +414,7 @@ input[type='color'] { width: 40px; height: 34px; padding: 2px; border: 1px solid
 /* spacing for sections that are not wrapped in .field */
 #dialog-root .dialog-body > div:not(.field):not(.errors) { margin-bottom: 16px; }
 #dialog-root .dialog-body > div > .field:last-child { margin-bottom: 0; }
+
+/* ---- Sound pickers (Settings) ---- */
+.vol { width: 160px; accent-color: var(--accent); }
+.vol-readout { min-width: 40px; color: var(--text-soft); font-size: 13px; }
