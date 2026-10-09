@@ -35,7 +35,7 @@ function createService(options = {}) {
   return service;
 }
 
-async function openApp({ playwright, service, colorScheme = 'light', width = 1100, height = 900, executablePath }) {
+async function openApp({ playwright, service, colorScheme = 'light', width = 1100, height = 900, executablePath, keepSplash = false }) {
   const browser = await playwright.chromium.launch({ executablePath });
   const context = await browser.newContext({ viewport: { width, height }, colorScheme });
   const page = await context.newPage();
@@ -63,6 +63,7 @@ async function openApp({ playwright, service, colorScheme = 'light', width = 110
   const file = path.resolve(__dirname, '../src/renderer/index.html');
   await page.goto(`file://${file}`);
   await page.waitForSelector('.zone');
+  if (!keepSplash) await page.waitForSelector('#splash', { state: 'detached' }); // the start-up splash lasts about 2 seconds
   return { browser, context, page, errors, calls };
 }
 

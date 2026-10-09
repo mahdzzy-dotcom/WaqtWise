@@ -293,6 +293,48 @@ main { width: 100%; margin: 0; padding: 6px clamp(16px, 3vw, 56px) 64px; }
 .check:hover { border-color: var(--ok); }
 .check.on { background: var(--ok); border-color: var(--ok); color: #04202a; }
 
+/* ---- Splash (every start) and welcome screen (first run) ---- */
+.splash {
+  position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 32px; background: var(--bg);
+  background-image: radial-gradient(520px 420px at 50% 38%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
+  transition: opacity 0.45s ease;
+}
+.splash.hide { opacity: 0; pointer-events: none; }
+.splash-logo { width: min(220px, 34vh); height: min(220px, 34vh); object-fit: contain; animation: splash-in 0.7s ease both; }
+.splash-title { margin-top: 22px; font-size: clamp(40px, 8vh, 64px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; animation: splash-in 0.7s 0.1s ease both; }
+.splash-slogan { margin: 18px 0 0; max-width: 640px; font-size: clamp(16px, 2.6vh, 21px); line-height: 1.45; color: var(--text-soft); font-weight: 500; animation: splash-in 0.7s 0.2s ease both; }
+.splash-strip { display: flex; gap: 6px; width: min(360px, 70vw); height: 8px; margin-top: 38px; animation: splash-in 0.7s 0.3s ease both; }
+.splash-strip > div { border-radius: 99px; background: var(--zf); }
+.splash-strip .z1 { flex: 414 1 0; } .splash-strip .z2 { flex: 206 1 0; } .splash-strip .z3 { flex: 147 1 0; }
+.splash-strip .z4 { flex: 83 1 0; } .splash-strip .z5 { flex: 590 1 0; }
+@keyframes splash-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash, .splash * { animation: none !important; transition: none !important; }
+}
+
+.welcome { position: fixed; inset: 0; z-index: 90; display: flex; background: var(--bg); overflow-y: auto; }
+.welcome-brand {
+  flex: 0 0 47%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+.welcome-brand img { width: min(230px, 32vh); height: min(230px, 32vh); object-fit: contain; }
+.welcome-brand .welcome-name { margin-top: 20px; font-size: clamp(36px, 7vh, 56px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+.welcome-brand p { margin: 16px 0 0; font-size: 19px; line-height: 1.45; color: var(--text-soft); font-weight: 500; }
+.welcome-brand .splash-strip { width: 260px; margin-top: 34px; animation: none; }
+.welcome-form { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 48px clamp(28px, 6vw, 80px); max-width: 720px; }
+.welcome-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: var(--accent); }
+.welcome-form h2 { margin: 10px 0 0; font-size: 34px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+.welcome-form .lead { margin: 14px 0 0; font-size: 16px; line-height: 1.55; color: var(--text-soft); }
+.welcome-form label { margin: 30px 0 8px; font-size: 13px; font-weight: 600; }
+.welcome-form select { height: 48px; border-radius: 14px; }
+.welcome-form .btn.primary { margin-top: 34px; align-self: flex-start; height: 52px; padding: 0 34px; border-radius: 16px; font-size: 16px; display: inline-flex; align-items: center; gap: 10px; }
+@media (max-width: 760px) {
+  .welcome { flex-direction: column; }
+  .welcome-brand { flex: none; padding: 32px; }
+  .welcome-brand img { width: 120px; height: 120px; }
+}
+
 /* ---- Dialogs ---- */
 .overlay {
   position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 22, 0.55);

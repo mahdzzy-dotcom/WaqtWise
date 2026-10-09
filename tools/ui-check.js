@@ -59,6 +59,27 @@ async function setTime(page, hour, minute, ampm) {
   const app = await openApp({ playwright, service, executablePath, width: 1100, height: 1100 });
   const { page, errors } = app;
 
+  console.log('Start-up splash');
+  await step('the splash shows the icon, name, slogan and zone strip, then fades away by itself', async () => {
+    const splashApp = await openApp({ playwright, service: createService(), executablePath, width: 1100, height: 700, keepSplash: true });
+    assert.equal(await splashApp.page.isVisible('#splash'), true);
+    assert.equal(await splashApp.page.textContent('.splash-title'), 'WaqtWise');
+    assert.equal(await splashApp.page.textContent('.splash-slogan'), 'Make every waqt count, wisely.');
+    assert.equal((await splashApp.page.$$('.splash-strip > div')).length, 5);
+    assert.ok(await splashApp.page.$eval('.splash-logo', (img) => img.complete && img.naturalWidth > 100), 'the big icon loaded');
+    await splashApp.page.waitForTimeout(500);
+    await shot(splashApp.page, 'splash');
+    await splashApp.page.waitForSelector('#splash', { state: 'detached', timeout: 6000 });
+    await splashApp.browser.close();
+  });
+  await step('a click skips the splash', async () => {
+    const skipApp = await openApp({ playwright, service: createService(), executablePath, width: 1100, height: 700, keepSplash: true });
+    await skipApp.page.waitForSelector('.zone');
+    await skipApp.page.click('#splash');
+    await skipApp.page.waitForSelector('#splash', { state: 'detached', timeout: 2000 });
+    await skipApp.browser.close();
+  });
+
   console.log('Daily View');
   await step('shows the header, Hijri date, Planning Day line and 5 zones', async () => {
     assert.match(await page.textContent('.day-title'), /Sunday, October 4, 2026/);
@@ -651,12 +672,13 @@ async function setTime(page, hour, minute, ampm) {
   await step('the welcome screen asks for the city once, then the app is ready', async () => {
     const fresh = createService({ firstRun: true });
     const first = await openApp({ playwright, service: fresh, executablePath, width: 1000, height: 800 });
-    await first.page.waitForSelector('text=Welcome to WaqtWise');
+    await first.page.waitForSelector('.welcome');
+    assert.match(await first.page.textContent('.welcome'), /Make every waqt count, wisely\./);
     assert.equal(await first.page.inputValue('#welcome-city'), 'Cairo');
     await first.page.selectOption('#welcome-city', 'Alexandria');
     await shot(first.page, 'welcome');
     await first.page.click('button:text-is("Start planning")');
-    await first.page.waitForSelector('.overlay', { state: 'detached' });
+    await first.page.waitForSelector('.welcome', { state: 'detached' });
     assert.equal(fresh.getSettings().cityName, 'Alexandria');
     assert.equal(fresh.getSettings().welcomeShown, true);
     assert.deepEqual(realErrors(first.errors), []);
@@ -664,7 +686,7 @@ async function setTime(page, hour, minute, ampm) {
 
     // Opening the app again does not show it a second time
     const again = await openApp({ playwright, service: fresh, executablePath, width: 1000, height: 800 });
-    assert.equal((await again.page.$$('.overlay')).length, 0);
+    assert.equal((await again.page.$$('.welcome')).length, 0);
     await again.browser.close();
   });
 

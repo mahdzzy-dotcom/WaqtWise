@@ -435,29 +435,57 @@
 
   // ---- First run ---------------------------------------------------------------------------------------------------------
 
-  // A friendly first screen: choose the city (prayer times depend on it), then start.
+  // First run: the welcome screen asks for the city (prayer times depend on it), then the app starts.
   WW.showWelcome = function showWelcome() {
     let city = WW.state.settings.cityName;
-    const dlg = WW.openDialog({ title: 'Welcome to WaqtWise' });
     const select = h('select', { id: 'welcome-city', 'aria-label': 'Your city', onchange: (e) => { city = e.target.value; } },
       WW.state.cities.map((name) => h('option', { value: name, text: name, selected: name === city })));
-    dlg.body.append(
-      h('p', { class: 'dialog-message', text: 'WaqtWise divides your day into 5 zones using the prayer times, so it needs to know your city.' }),
-      h('div', { class: 'field' }, h('label', { for: 'welcome-city', text: 'Your city' }), select),
-      h('p', { class: 'hint', text: 'You can change this later in Settings. Everything stays on this computer.' }));
-    dlg.footer.appendChild(h('button', {
-      class: 'btn primary', text: 'Start planning',
+    const strip = h('div', { class: 'splash-strip', 'aria-hidden': 'true' }, [1, 2, 3, 4, 5].map((n) => h('div', { class: `z${n}` })));
+    const start = h('button', {
+      class: 'btn primary', type: 'button',
       onclick: async () => {
         try {
           WW.state.settings = await WW.call('saveSettings', { cityName: city, welcomeShown: true });
-          dlg.close();
+          screen.remove();
           await WW.showDay(WW.state.todayKey);
         } catch (error) {
           WW.toast(error.message, 'error');
         }
       },
-    }));
+    }, 'Start planning', WW.icon('right', 20, 2.4));
+    const screen = h('div', { class: 'welcome', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Welcome to WaqtWise' },
+      h('div', { class: 'welcome-brand' },
+        h('img', { src: 'logo-large.png', alt: '' }),
+        h('div', { class: 'welcome-name', text: 'WaqtWise' }),
+        h('p', { text: 'Make every waqt count, wisely.' }),
+        strip),
+      h('div', { class: 'welcome-form' },
+        h('div', { class: 'welcome-eyebrow', text: 'WELCOME' }),
+        h('h2', { text: 'Let\u2019s set up your day' }),
+        h('p', { class: 'lead', text: 'WaqtWise divides your day into 5 zones using the prayer times, so it needs to know your city.' }),
+        h('label', { for: 'welcome-city', text: 'Your city' }),
+        select,
+        h('p', { class: 'hint', text: 'You can change this later in Settings. Everything stays on this computer.' }),
+        start));
+    document.body.appendChild(screen);
+    start.focus();
   };
+
+  // The splash covers the window for a moment at every start; a click or key skips it.
+  const SPLASH_MS = 1600;
+  const splashStarted = Date.now();
+  function hideSplash() {
+    const splash = document.getElementById('splash');
+    if (!splash || splash.dataset.leaving) return;
+    splash.dataset.leaving = '1';
+    const leave = () => {
+      splash.classList.add('hide');
+      setTimeout(() => splash.remove(), 500);
+    };
+    setTimeout(leave, Math.max(0, SPLASH_MS - (Date.now() - splashStarted)));
+    const skip = () => { splash.removeEventListener('click', skip); leave(); };
+    splash.addEventListener('click', skip);
+  }
 
   // ---- Start-up -------------------------------------------------------------------------------------------------------------
 
@@ -488,11 +516,13 @@
       if (boot.loadNotes && boot.loadNotes.length) WW.toast(boot.loadNotes[0], 'error');
     } catch (error) {
       clear(view()).appendChild(h('div', { class: 'errors', text: `Could not start: ${error.message}` }));
+      hideSplash();
       return;
     }
 
     refreshBell();
     if (!WW.state.settings.welcomeShown) WW.showWelcome();
+    hideSplash();
 
     // The window keeps itself fresh: current zone, overdue marks, and changes made elsewhere.
     setInterval(() => { if (WW.state.view === 'daily' && !anyDialogOpen()) WW.afterChange(); }, 30000);
