@@ -647,3 +647,24 @@ test('getDay: names the tasks that conflict, marks the overlapping stretch, and 
   assert.equal(service.getDay('2026-10-05').currentZone, null);
   assert.equal(service.getDay('2026-10-05').dayNowPct, null);
 });
+
+test('The week strip lists Sunday to Saturday with today marked and each day\'s progress', () => {
+  const { service } = makeService();
+  const { taskId } = service.saveTask({ mode: 'create', form: form({ title: 'A', date: '2026-10-06' }) });
+  service.saveTask({ mode: 'create', form: form({ title: 'B', date: '2026-10-06', start: fixed('09:00') }) });
+  service.setDone({ taskId, dateKey: '2026-10-06', done: true });
+  const { week } = service.getDay('2026-10-07');
+  assert.deepEqual(week.days.map((d) => d.weekday), ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+  assert.deepEqual(week.days.map((d) => d.day), [4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(week.days.filter((d) => d.isToday).map((d) => d.key), [DAY]);
+  assert.deepEqual(week.days.filter((d) => d.isSelected).map((d) => d.key), ['2026-10-07']);
+  const tue = week.days[2];
+  assert.equal(tue.total, 2);
+  assert.equal(tue.done, 1);
+  assert.equal(tue.pct, 50);
+  assert.match(tue.label, /Tuesday .*1 of 2 done/);
+  assert.match(week.days[0].label, /^Today, Sunday/);
+  assert.match(week.days[1].label, /no tasks/);
+  assert.equal(week.prevKey, '2026-09-30');
+  assert.equal(week.nextKey, '2026-10-14');
+});

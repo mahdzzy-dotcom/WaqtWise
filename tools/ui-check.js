@@ -132,22 +132,28 @@ async function setTime(page, hour, minute, ampm) {
 
   console.log('Navigation');
   await step('previous / next / Today / date picker', async () => {
-    await page.click('button[aria-label="Next day"]');
+    assert.equal((await page.$$('.day-chip')).length, 7, 'the week strip has seven days');
+    assert.equal(await page.locator('.day-chip.today .day-chip-wd').textContent(), 'TODAY');
+    assert.equal(await page.locator('.day-chip.on').count(), 1);
+    assert.equal((await page.$$('.today-badge, .topbar .app-title, .topbar .app-logo')).length, 0, 'no badge or brand in the bar');
+    await page.click('.day-chip:has-text("Mon")');
     await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('October 5'));
-    assert.equal((await page.$$('.today-badge')).length, 0);
+    assert.equal(await page.locator('.day-chip.on .day-chip-wd').textContent(), 'MON');
+    assert.equal(await page.locator('.day-chip.today').count(), 1, 'today stays marked');
     assert.equal((await page.$$('.zone.current')).length, 0);
     // The 2 AM task belongs to Oct 4, so Oct 5 does not show it
     assert.ok(!(await page.textContent('#view')).includes('Night reading'));
-    await page.click('button[aria-label="Previous day"]');
-    await page.click('button[aria-label="Previous day"]');
-    await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('October 3'));
+    await page.click('button[aria-label="Previous week"]');
+    await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('September 28'));
+    await page.click('button[aria-label="Next week"]');
+    await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('October 5'));
     await page.click('button:text-is("Today")');
     await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('October 4'));
     await page.fill('input[aria-label="Jump to date"]', '2026-10-09');
     await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('October 9'));
     assert.deepEqual(await rowTexts(page, 4), ['Gym'], 'the Friday repeat appears');
     await page.click('button:text-is("Today")');
-    await page.waitForSelector('.today-badge');
+    await page.waitForSelector('.day-chip.today.on');
   });
 
   console.log('Adding tasks');
@@ -384,7 +390,7 @@ async function setTime(page, hour, minute, ampm) {
     await page.click('.overlay:last-child .btn.primary');
     await page.waitForSelector('.dialog', { state: 'detached' });
     assert.ok((await rowTexts(page, 1)).includes('Study SQL (today)'));
-    await page.click('button[aria-label="Next day"]');
+    await page.click('.day-chip:has-text("Mon")');
     await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('October 5'));
     assert.ok((await rowTexts(page, 1)).includes('Study SQL'), 'tomorrow keeps the old title');
     await page.click('button:text-is("Today")');
@@ -458,8 +464,11 @@ async function setTime(page, hour, minute, ampm) {
     await page.click('#theme-btn');
     await page.waitForFunction(() => ['light', 'dark'].includes(document.documentElement.dataset.theme));
     assert.notEqual(await page.getAttribute('#theme-btn', 'aria-label'), before);
+    await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, 'daily-dark');
     await page.click('#theme-btn');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await shot(page, 'daily-light');
     await page.waitForTimeout(150);
     assert.equal(await page.getAttribute('#theme-btn', 'aria-label'), before);
   });

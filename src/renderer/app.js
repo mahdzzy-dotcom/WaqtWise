@@ -226,19 +226,30 @@
       onchange: (e) => { if (e.target.value) WW.showDay(e.target.value); },
     });
 
+    const week = day.week;
+    const chip = (d) => h('button', {
+      class: `day-chip${d.isSelected ? ' on' : ''}${d.isToday ? ' today' : ''}`, type: 'button',
+      'aria-pressed': String(d.isSelected), 'aria-label': d.label, title: d.label,
+      onclick: () => { if (!d.isSelected) WW.showDay(d.key); },
+    },
+    h('span', { class: 'day-chip-wd', text: d.isToday ? 'TODAY' : d.weekday.toUpperCase() }),
+    h('span', { class: 'day-chip-n', text: String(d.day) }),
+    h('span', { class: 'day-chip-track', 'aria-hidden': 'true' }, h('span', { class: 'day-chip-fill', style: { width: `${d.pct}%` } })));
+
     root.append(
       h('div', { class: 'day-head' },
-        h('div', { class: 'day-nav' },
-          h('button', { class: 'icon-btn', 'aria-label': 'Previous day', onclick: () => WW.showDay(day.prevKey) }, WW.icon('left', 20, 2.2)),
-          h('div', {},
-            h('h1', { class: 'day-title' }, day.dateTitle, day.isCurrentDay ? h('span', { class: 'today-badge', text: 'TODAY' }) : null),
-            h('div', { class: 'day-sub' },
-              day.hijri ? h('span', { class: 'hijri', text: day.hijri }) : null,
-              h('span', { text: day.planningLine }))),
-          h('button', { class: 'icon-btn', 'aria-label': 'Next day', onclick: () => WW.showDay(day.nextKey) }, WW.icon('right', 20, 2.2))),
-        h('div', { class: 'day-actions' },
-          h('button', { class: 'btn tall', text: 'Today', onclick: () => WW.showDay(WW.state.todayKey || day.currentPlanningDayKey) }),
-          picker)),
+        h('div', { class: 'day-info' },
+          h('h1', { class: 'day-title', text: day.dateTitle }),
+          h('div', { class: 'day-sub' },
+            day.hijri ? h('span', { class: 'hijri', text: day.hijri }) : null,
+            h('span', { text: day.planningLine })),
+          h('div', { class: 'day-actions' },
+            h('button', { class: 'btn', text: 'Today', onclick: () => WW.showDay(WW.state.todayKey || day.currentPlanningDayKey) }),
+            picker)),
+        h('div', { class: 'week-strip', role: 'group', 'aria-label': 'Days of this week' },
+          h('button', { class: 'icon-btn sm', type: 'button', 'aria-label': 'Previous week', onclick: () => WW.showDay(week.prevKey) }, WW.icon('left', 18, 2.2)),
+          ...week.days.map(chip),
+          h('button', { class: 'icon-btn sm', type: 'button', 'aria-label': 'Next week', onclick: () => WW.showDay(week.nextKey) }, WW.icon('right', 18, 2.2)))),
       heroCard(day),
       h('div', { class: 'zones' }, day.zones.map(zoneSection)));
   }

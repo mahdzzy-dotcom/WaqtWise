@@ -267,8 +267,37 @@ class PlannerService {
       }),
       hijri: this.hijriLabel(planningKey),
       planningLine: `Planning Day: ${formatKeyShort(planningKey)} → ${formatKeyShort(endKey)}`,
+      week: this.weekStrip(planningKey, currentKey),
       zones,
     };
+  }
+
+  // The seven days (Sunday to Saturday) around a planning day, for the strip at the top of the Daily View.
+  weekStrip(planningKey, currentKey) {
+    const provider = this.provider();
+    const options = this.recurrenceOptions();
+    const first = addDaysToKey(planningKey, -weekdayOfKey(planningKey));
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const longNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const key = addDaysToKey(first, i);
+      const list = occurrencesForPlanningDay(provider, this.data.tasks, key, options);
+      const done = list.filter((o) => o.done).length;
+      const pct = list.length ? Math.round((done / list.length) * 100) : 0;
+      days.push({
+        key,
+        weekday: names[i],
+        day: parseDateKey(key).getDate(),
+        total: list.length,
+        done,
+        pct,
+        isToday: key === currentKey,
+        isSelected: key === planningKey,
+        label: `${key === currentKey ? 'Today, ' : ''}${longNames[i]} ${formatKeyShort(key)}, ${list.length ? `${done} of ${list.length} done` : 'no tasks'}`,
+      });
+    }
+    return { days, prevKey: addDaysToKey(planningKey, -7), nextKey: addDaysToKey(planningKey, 7) };
   }
 
   // The Statistics screen. query: { range: 'day'|'week'|'month'|'year'|'custom', anchorKey, fromKey, toKey }.

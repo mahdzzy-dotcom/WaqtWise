@@ -124,9 +124,7 @@ svg { display: block; flex: none; }
   background: var(--bg);
 }
 .topbar-left, .topbar-right { display: flex; align-items: center; gap: 10px; }
-.topbar-left { gap: 14px; }
 .app-logo { width: 40px; height: 40px; object-fit: contain; }
-.app-title { margin: 0; font-size: 20px; letter-spacing: 0.01em; font-weight: 800; }
 .bell-wrap { position: relative; }
 #bell-btn { position: relative; }
 #bell-btn.bell-empty { opacity: 0.45; }
@@ -197,16 +195,33 @@ svg { display: block; flex: none; }
 main { width: 100%; margin: 0; padding: 6px clamp(16px, 3vw, 56px) 64px; }
 
 /* ---- Day header ---- */
-.day-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; margin: 0 0 20px; }
-.day-nav { display: flex; align-items: center; gap: 14px; }
+.day-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; margin: 0 0 20px; }
+.day-info { min-width: 0; }
 .day-title { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .day-sub { color: var(--text-soft); font-size: 13px; margin-top: 4px; }
 .day-sub .hijri { margin-inline-end: 8px; }
-.day-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.day-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.day-actions .btn, .day-actions input[type='date'] { height: 36px !important; border-radius: 11px; }
 .day-actions input[type='date'] {
   width: auto !important; height: 44px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px;
 }
-.today-badge { background: var(--accent); color: var(--accent-text); font-size: 11px; font-weight: 800; letter-spacing: 0.12em; padding: 3px 10px; border-radius: 99px; }
+.week-strip { display: flex; align-items: center; gap: 8px; }
+.icon-btn.sm { width: 36px; height: 36px; border-radius: 11px; }
+.day-chip {
+  width: 68px; height: 78px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0;
+}
+.day-chip:hover { background: var(--surface-2); }
+.day-chip.today { border: 2px solid var(--accent); }
+.day-chip.on, .day-chip.on:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.day-chip-wd { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--text-soft); }
+.day-chip.today .day-chip-wd { font-weight: 800; letter-spacing: 0.1em; color: var(--accent); }
+.day-chip.on .day-chip-wd { color: var(--accent-text); }
+.day-chip-n { font-size: 22px; font-weight: 800; line-height: 1; }
+.day-chip-track { width: 36px; height: 5px; border-radius: 99px; background: var(--border); overflow: hidden; margin-top: 4px; }
+.day-chip.on .day-chip-track { background: rgba(255, 255, 255, 0.35); }
+.day-chip-fill { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.day-chip.on .day-chip-fill { background: var(--accent-text); }
 
 /* ---- Right now card ---- */
 .hero { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 26px 28px 24px; margin-bottom: 22px; }
@@ -412,6 +427,10 @@ input[type='color'] { width: 40px; height: 34px; padding: 2px; border: 1px solid
   .settings-grid { grid-template-columns: 1fr; }
   .task-time { width: 70px; }
   .day-title { font-size: 18px; }
+  .day-chip { width: 44px; height: 66px; border-radius: 12px; }
+  .day-chip-n { font-size: 17px; }
+  .day-chip-track { width: 26px; }
+  .week-strip { gap: 4px; }
 }
 
 /* spacing for sections that are not wrapped in .field */
