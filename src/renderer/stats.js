@@ -42,8 +42,8 @@
 
   function header(data) {
     const go = (query) => query && WW.showStats(query);
-    const prev = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Previous period', disabled: !data.prevQuery, onclick: () => go(data.prevQuery) }, WW.icon('left', 20, 2.2));
-    const next = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Next period', disabled: !data.nextQuery, onclick: () => go(data.nextQuery) }, WW.icon('right', 20, 2.2));
+    const prev = h('button', { class: 'icon-btn sm', type: 'button', 'aria-label': 'Previous period', disabled: !data.prevQuery, onclick: () => go(data.prevQuery) }, WW.icon('left', 18, 2.2));
+    const next = h('button', { class: 'icon-btn sm', type: 'button', 'aria-label': 'Next period', disabled: !data.nextQuery, onclick: () => go(data.nextQuery) }, WW.icon('right', 18, 2.2));
 
     const choose = (id) => {
       if (id === data.range) return;
@@ -67,9 +67,11 @@
       : [];
 
     return h('div', { class: 'day-head stats-head' },
-      h('div', { class: 'day-nav' }, prev,
-        h('div', {}, h('h1', { class: 'day-title', text: 'Statistics' }), h('div', { class: 'day-sub', id: 'stats-range-label', text: data.rangeLabel })),
-        next),
+      h('div', { class: 'day-info' },
+        h('h1', { class: 'day-title', text: 'Statistics' }),
+        h('div', { class: 'stats-nav' },
+          h('div', { class: 'stats-arrows' }, prev, next),
+          h('div', { class: 'day-sub', id: 'stats-range-label', text: data.rangeLabel }))),
       h('div', { class: 'day-actions stats-actions' }, custom, seg,
         h('button', { class: 'btn tall', type: 'button', id: 'stats-manage', onclick: openManage }, WW.icon('gear', 18, 2), 'Manage')));
   }

@@ -14,7 +14,7 @@
 const path = require('path');
 const fs = require('fs');
 const {
-  app, BrowserWindow, ipcMain, dialog, Notification, Tray, Menu, nativeImage, powerMonitor, screen,
+  app, BrowserWindow, ipcMain, dialog, Notification, Tray, Menu, nativeImage, powerMonitor, screen, nativeTheme,
 } = require('electron');
 
 const { PlannerService, PUBLIC_METHODS } = require('./service');
@@ -70,6 +70,31 @@ function flushPendingEvents() {
 
 // ---- The window --------------------------------------------------------------------------------------------------
 
+// The title bar takes the colours of the page, so the window looks like one piece in light and dark.
+const TITLE_BAR_HEIGHT = 32;
+const TITLE_COLORS = {
+  light: { color: '#edf4f6', symbolColor: '#0b2a44' },
+  dark: { color: '#071a2e', symbolColor: '#eaf3f8' },
+};
+
+function titleBarColors() {
+  const choice = service ? service.getSettings().theme : 'system';
+  const dark = choice === 'dark' || (choice !== 'light' && nativeTheme.shouldUseDarkColors);
+  return dark ? TITLE_COLORS.dark : TITLE_COLORS.light;
+}
+
+function applyTitleBarTheme() {
+  if (!mainWindow || mainWindow.isDestroyed() || typeof mainWindow.setTitleBarOverlay !== 'function') return;
+  try {
+    mainWindow.setTitleBarOverlay({ ...titleBarColors(), height: TITLE_BAR_HEIGHT });
+    mainWindow.setBackgroundColor(titleBarColors().color);
+  } catch (error) {
+    // Not every platform can change it; the window still works.
+  }
+}
+
+nativeTheme.on('updated', applyTitleBarTheme);
+
 function createWindow({ visible }) {
   rendererReady = false;
   showOnReady = visible;
@@ -81,7 +106,9 @@ function createWindow({ visible }) {
     show: false, // shown when ready (or kept hidden for a start with Windows)
     title: 'WaqtWise',
     icon: ICON,
-    backgroundColor: '#f4f6f9',
+    backgroundColor: titleBarColors().color,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { ...titleBarColors(), height: TITLE_BAR_HEIGHT },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -417,7 +444,7 @@ function start() {
         sendToWindow('data-changed');
         if (engine) engine.reschedule(); // tasks or settings changed: re-aim the exact-time timer
       },
-      onSettingsChanged: applyStartWithWindows,
+      onSettingsChanged: (settings) => { applyStartWithWindows(settings); applyTitleBarTheme(); },
     });
     registerIpc();
     if (app.isPackaged) app.setAsDefaultProtocolClient(PROTOCOL);

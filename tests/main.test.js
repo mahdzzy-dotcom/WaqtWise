@@ -65,6 +65,8 @@ function makeFakeElectron({ userData, lock = true, saveTo, openFrom, packaged = 
       fake.windows.push(this);
     }
     setMenuBarVisibility() {}
+    setTitleBarOverlay(overlay) { this.overlay = overlay; }
+    setBackgroundColor(color) { this.background = color; }
     setAlwaysOnTop(flag, level) { this.alwaysOnTop = [flag, level]; }
     destroy() {
       this.destroyed = true;
@@ -102,6 +104,7 @@ function makeFakeElectron({ userData, lock = true, saveTo, openFrom, packaged = 
   };
   fake.Menu = { buildFromTemplate: (template) => ({ template }) };
   fake.nativeImage = { createFromPath: (p) => ({ path: p, resize: (size) => ({ path: p, size }) }) };
+  fake.nativeTheme = { shouldUseDarkColors: false, on: () => {} };
   fake.powerMonitor = { on: (event, fn) => { fake.powerEvents[event] = fn; } };
 
   fake.ipcMain = {
@@ -218,6 +221,8 @@ test('Start-up: app id, one secure window showing our page, shown when ready', a
   assert.ok(fs.existsSync(win.file), 'the page exists');
   assert.ok(fs.existsSync(win.options.webPreferences.preload), 'the preload script exists');
   assert.ok(fs.existsSync(win.options.icon), 'the icon exists');
+  assert.equal(win.options.titleBarStyle, 'hidden', 'the title bar is drawn by the page');
+  assert.equal(win.options.titleBarOverlay.color, win.options.backgroundColor, 'title bar and page share one colour');
   assert.equal(win.visible, false);
   win.emit('ready-to-show');
   assert.equal(win.visible, true);
@@ -875,4 +880,15 @@ test('The preload script exposes only the expected functions', () => {
   assert.deepEqual(Object.keys(exposed.api).sort(), ['call', 'exportData', 'importData', 'on', 'previewAlert', 'ready', 'testNotification']);
   exposed.api.call('getDay', '2030-01-10');
   assert.deepEqual(sent[0], ['svc', 'getDay', ['2030-01-10']]);
+});
+
+test('The title bar follows the theme chosen in Settings', async () => {
+  const app = await launch();
+  const win = app.win();
+  await app.svc('saveSettings', { theme: 'dark' });
+  assert.equal(win.overlay.color, '#071a2e');
+  assert.equal(win.background, '#071a2e');
+  await app.svc('saveSettings', { theme: 'light' });
+  assert.equal(win.overlay.color, '#edf4f6');
+  app.cleanup();
 });
