@@ -360,3 +360,16 @@ test('the list of charts: the settings list and the screen agree, all are shown 
   assert.deepEqual(sanitizeSettings({ statsCharts: ['late', 'nope'] }).statsCharts, STATS_CHART_IDS, 'a bad saved list falls back to the default');
   assert.deepEqual(sanitizeSettings({ statsCharts: ['late', 'zones'] }).statsCharts, ['late', 'zones']);
 });
+
+test('The week follows the first day chosen in Settings', () => {
+  // 2026-10-07 is a Wednesday
+  const sun = resolveRange({ range: 'week', anchorKey: '2026-10-07' }, TODAY, 0);
+  assert.equal(sun.start, '2026-10-04');
+  const sat = resolveRange({ range: 'week', anchorKey: '2026-10-07' }, TODAY, 6);
+  assert.deepEqual([sat.start, sat.end], ['2026-10-03', '2026-10-09']);
+  assert.equal(sat.prevStart, '2026-09-26');
+  const mon = resolveRange({ range: 'week', anchorKey: '2026-10-07' }, TODAY, 1);
+  assert.deepEqual([mon.start, mon.end], ['2026-10-05', '2026-10-11']);
+  // a Monday-first week that starts today's Saturday-first week: Saturday belongs to the Monday week before
+  assert.equal(resolveRange({ range: 'week', anchorKey: TODAY }, TODAY, 1).start, '2026-10-05');
+});

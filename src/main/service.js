@@ -72,6 +72,10 @@ class PlannerService {
     return { workingDays: this.settings.workingDays, tasks: this.data.tasks };
   }
 
+  weekStart() {
+    return [6, 0, 1].includes(this.settings.weekStart) ? this.settings.weekStart : 0;
+  }
+
   persist() {
     this.store.save(this.data);
   }
@@ -272,29 +276,30 @@ class PlannerService {
     };
   }
 
-  // The seven days (Sunday to Saturday) around a planning day, for the strip at the top of the Daily View.
+  // The seven days of the week (from the first day chosen in Settings) around a planning day, for the strip at the top of the Daily View.
   weekStrip(planningKey, currentKey) {
     const provider = this.provider();
     const options = this.recurrenceOptions();
-    const first = addDaysToKey(planningKey, -weekdayOfKey(planningKey));
+    const first = addDaysToKey(planningKey, -((weekdayOfKey(planningKey) - this.weekStart() + 7) % 7));
     const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const longNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const days = [];
     for (let i = 0; i < 7; i++) {
       const key = addDaysToKey(first, i);
+      const wd = weekdayOfKey(key);
       const list = occurrencesForPlanningDay(provider, this.data.tasks, key, options);
       const done = list.filter((o) => o.done).length;
       const pct = list.length ? Math.round((done / list.length) * 100) : 0;
       days.push({
         key,
-        weekday: names[i],
+        weekday: names[wd],
         day: parseDateKey(key).getDate(),
         total: list.length,
         done,
         pct,
         isToday: key === currentKey,
         isSelected: key === planningKey,
-        label: `${key === currentKey ? 'Today, ' : ''}${longNames[i]} ${formatKeyShort(key)}, ${list.length ? `${done} of ${list.length} done` : 'no tasks'}`,
+        label: `${key === currentKey ? 'Today, ' : ''}${longNames[wd]} ${formatKeyShort(key)}, ${list.length ? `${done} of ${list.length} done` : 'no tasks'}`,
       });
     }
     return { days, prevKey: addDaysToKey(planningKey, -7), nextKey: addDaysToKey(planningKey, 7) };
@@ -309,6 +314,7 @@ class PlannerService {
       options: this.recurrenceOptions(),
       now: this.now(),
       query: query || {},
+      weekStart: this.weekStart(),
     });
   }
 

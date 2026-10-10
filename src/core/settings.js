@@ -185,6 +185,7 @@ const DEFAULT_SETTINGS = {
   welcomeShown: false, // the first-run "choose your city" screen
   theme: 'system',
   workingDays: [0, 1, 2, 3, 4], // Sunday - Thursday
+  weekStart: 0, // first day of the week: 6 Saturday, 0 Sunday or 1 Monday
   // Full-screen reminder at the exact start time
   fullScreenAlerts: true, // master switch; each task still has its own switch
   fullScreenDefaultForNewTasks: false,
@@ -241,6 +242,7 @@ function validateSettings(settings) {
       errors.push('Choose charts from the list, each one only once');
     }
   }
+  if ('weekStart' in s && ![6, 0, 1].includes(s.weekStart)) errors.push('Choose Saturday, Sunday or Monday as the first day of the week');
   if ('alertScreens' in s && !ALERT_SCREENS.includes(s.alertScreens)) errors.push('Choose all screens or the main screen');
   if ('alertAppearance' in s) errors.push(...validateAppearance(s.alertAppearance));
   for (const key of ['notificationsEnabled', 'soundEnabled', 'zoneStartNotifications', 'startWithWindows', 'showBackgroundMessage', 'backgroundMessageShown', 'welcomeShown', 'fullScreenAlerts', 'fullScreenDefaultForNewTasks', 'alertSoundRepeat']) {

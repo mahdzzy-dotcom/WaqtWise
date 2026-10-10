@@ -668,3 +668,17 @@ test('The week strip lists Sunday to Saturday with today marked and each day\'s 
   assert.equal(week.prevKey, '2026-09-30');
   assert.equal(week.nextKey, '2026-10-14');
 });
+
+test('First day of the week: the strip, the statistics and validation', () => {
+  const { service } = makeService();
+  assert.equal(service.getDay('2026-10-07').week.days[0].weekday, 'Sun');
+  service.saveSettings({ weekStart: 6 });
+  const sat = service.getDay('2026-10-07').week;
+  assert.deepEqual(sat.days.map((d) => d.weekday), ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  assert.equal(sat.days[0].key, '2026-10-03');
+  assert.match(sat.days[1].label, /^Today, Sunday/);
+  assert.equal(service.getStats({ range: 'week', anchorKey: DAY }).rangeStartKey, '2026-10-03');
+  service.saveSettings({ weekStart: 1 });
+  assert.deepEqual(service.getDay('2026-10-04').week.days.map((d) => d.weekday), ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  assert.throws(() => service.saveSettings({ weekStart: 3 }), /first day of the week/);
+});

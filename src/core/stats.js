@@ -44,7 +44,7 @@ function eachDay(from, to, fn) {
 // ---- the selected range -----------------------------------------------------------------------
 
 // query: { range, anchorKey, fromKey, toKey }. Returns the dates of the range and of the one before it.
-function resolveRange(query, todayKey) {
+function resolveRange(query, todayKey, weekStart = 0) {
   const q = query || {};
   const range = RANGES.includes(q.range) ? q.range : 'week';
   let anchor = isValidKey(q.anchorKey) ? q.anchorKey : todayKey;
@@ -57,7 +57,7 @@ function resolveRange(query, todayKey) {
     start = anchor; end = anchor;
     prevStart = addDaysToKey(anchor, -1); prevEnd = prevStart;
   } else if (range === 'week') {
-    start = addDaysToKey(anchor, -weekdayOfKey(anchor)); end = addDaysToKey(start, 6);
+    start = addDaysToKey(anchor, -((weekdayOfKey(anchor) - weekStart + 7) % 7)); end = addDaysToKey(start, 6);
     prevStart = addDaysToKey(start, -7); prevEnd = addDaysToKey(start, -1);
   } else if (range === 'month') {
     start = monthStartKey(anchor); end = monthEndKey(anchor);
@@ -169,11 +169,11 @@ const percentOf = (t) => (t.total ? Math.round((t.done / t.total) * 100) : null)
 // ---- the whole picture ------------------------------------------------------------------------
 
 // args: { provider, tasks, categories, options, now, query }
-function computeStats({ provider, tasks, categories, options, now, query }) {
+function computeStats({ provider, tasks, categories, options, now, query, weekStart = 0 }) {
   const nowMs = now.getTime();
   const todayKey = currentPlanningDayKey(provider, now);
   const earliestKey = earliestDay(tasks, todayKey);
-  const r = resolveRange(query, todayKey);
+  const r = resolveRange(query, todayKey, weekStart);
   const days = collectDays(provider, tasks, options || {}, earliestKey < r.prevStart ? earliestKey : r.prevStart, todayKey, nowMs);
 
   const listFor = (from, to) => {
@@ -316,13 +316,13 @@ function computeStats({ provider, tasks, categories, options, now, query }) {
     const first = makeKey(year, 1, 1);
     const list = [];
     eachDay(first, makeKey(year, 12, 31), (k) => list.push(heatDay(k)));
-    heat = { mode: 'year', title: `${year} at a glance`, firstWeekday: weekdayOfKey(first), days: list };
+    heat = { mode: 'year', title: `${year} at a glance`, firstWeekday: (weekdayOfKey(first) - weekStart + 7) % 7, weekStart, days: list };
   } else {
     const anchorMonth = r.range === 'custom' ? r.dataEnd : r.anchor;
     const first = monthStartKey(anchorMonth);
     const list = [];
     eachDay(first, monthEndKey(first), (k) => list.push(heatDay(k)));
-    heat = { mode: 'month', title: `${MONTHS[splitKey(first).m - 1]} ${splitKey(first).y} at a glance`, firstWeekday: weekdayOfKey(first), days: list };
+    heat = { mode: 'month', title: `${MONTHS[splitKey(first).m - 1]} ${splitKey(first).y} at a glance`, firstWeekday: (weekdayOfKey(first) - weekStart + 7) % 7, weekStart, days: list };
   }
 
   // ---- completion trend: what the line shows depends on the range ----

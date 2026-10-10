@@ -129,7 +129,7 @@
     let body;
     if (heat.mode === 'month') {
       const cells = [];
-      WEEKDAYS.forEach((w) => cells.push(h('div', { class: 'heat-wd', text: w })));
+      for (let i = 0; i < 7; i++) cells.push(h('div', { class: 'heat-wd', text: WEEKDAYS[(heat.weekStart + i) % 7] }));
       for (let i = 0; i < heat.firstWeekday; i++) cells.push(h('div', { class: 'heat-blank' }));
       heat.days.forEach((d) => {
         const strong = d.pct !== null && d.pct >= 70;

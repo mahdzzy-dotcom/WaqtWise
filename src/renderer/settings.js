@@ -291,6 +291,9 @@
     const theme = h('select', { class: 'sel-auto', 'aria-label': 'Theme', onchange: (e) => save({ theme: e.target.value }) },
       [['system', 'System (follow Windows)'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => h('option', { value: v, text: l, selected: s.theme === v })));
 
+    const weekStart = h('select', { class: 'sel-auto', 'aria-label': 'First day of the week', onchange: (e) => save({ weekStart: Number(e.target.value) }) },
+      [[6, 'Saturday'], [0, 'Sunday'], [1, 'Monday']].map(([v, l]) => h('option', { value: v, text: l, selected: s.weekStart === v })));
+
     const workingDays = h('span', { class: 'daytoggle' },
       DAYS.map((label, i) => h('button', {
         type: 'button', class: s.workingDays.includes(i) ? 'on' : '', text: label, 'aria-pressed': String(s.workingDays.includes(i)),
@@ -339,6 +342,7 @@
           row('Start with Windows', toggle('Start WaqtWise when Windows starts (in the tray)', s.startWithWindows, (v) => save({ startWithWindows: v }))),
           row('Background message', toggle('Show the "still running in the background" message', s.showBackgroundMessage, (v) => save({ showBackgroundMessage: v }), 'Shown once, the next time the window is closed. Closing the window keeps WaqtWise running in the tray so reminders keep working.')),
           row('Theme', theme),
+          row('First day of the week', h('div', {}, weekStart, h('p', { class: 'hint', text: 'The day cards at the top of the Daily View and the weeks in Statistics start from this day.' }))),
           row('Working days', h('div', {}, workingDays, h('p', { class: 'hint', text: 'Used by "last working day" repeat rules.' }))))),
 
       alertSection(),

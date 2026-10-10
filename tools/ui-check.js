@@ -485,6 +485,29 @@ async function setTime(page, hour, minute, ampm) {
     await page.click('#drawer .drawer-item:has-text("Settings")');
     await page.waitForSelector('.settings-section');
   });
+  await step('first day of the week: the day cards start from the chosen day', async () => {
+    assert.equal(await page.inputValue('select[aria-label="First day of the week"]'), '0');
+    await page.selectOption('select[aria-label="First day of the week"]', '6');
+    await page.click('#menu-btn');
+    await page.click('#drawer .drawer-item:has-text("Daily View")');
+    await page.waitForSelector('.day-chip');
+    assert.deepEqual(await page.$$eval('.day-chip .day-chip-wd', (els) => els.map((e) => e.textContent)), ['SAT', 'TODAY', 'MON', 'TUE', 'WED', 'THU', 'FRI']);
+    await page.click('button[aria-label="Next week"]');
+    await page.waitForFunction(() => document.querySelector('.day-title').textContent.includes('October 11'));
+    assert.equal(await page.locator('.day-chip.on .day-chip-wd').textContent(), 'SUN');
+    await page.click('#menu-btn');
+    await page.click('#drawer .drawer-item:has-text("Settings")');
+    await page.waitForSelector('.settings-section');
+    await page.selectOption('select[aria-label="First day of the week"]', '0');
+    await page.click('#menu-btn');
+    await page.click('#drawer .drawer-item:has-text("Daily View")');
+    await page.waitForSelector('.day-chip');
+    await page.click('button:text-is("Today")');
+    await page.waitForSelector('.day-chip.today.on');
+    await page.click('#menu-btn');
+    await page.click('#drawer .drawer-item:has-text("Settings")');
+    await page.waitForSelector('.settings-section');
+  });
   await step('missed-reminders summary dialog', async () => {
     await page.evaluate(() => window.__handlers.missed([
       { taskId: 't2', dateKey: '2026-10-04', title: 'Study SQL', startLabel: '8:00 AM', zoneName: 'Fajr → Dhuhr', alreadyStarted: true },
