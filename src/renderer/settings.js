@@ -28,6 +28,18 @@
       hint ? h('p', { class: 'hint', text: hint }) : null);
   }
 
+  // A real on/off switch (a sliding knob) with the word On or Off next to it.
+  function onOffSwitch(label, checked, onChange, hint) {
+    const state = h('span', { class: 'onoff-state', text: checked ? 'On' : 'Off' });
+    const input = h('input', {
+      type: 'checkbox', class: 'onoff', role: 'switch', 'aria-label': label, checked,
+      onchange: (e) => { state.textContent = e.target.checked ? 'On' : 'Off'; onChange(e.target.checked); },
+    });
+    return h('div', {},
+      h('label', { class: 'onoff-row' }, input, h('span', { class: 'onoff-label', text: label }), state),
+      hint ? h('p', { class: 'hint', text: hint }) : null);
+  }
+
   function numberField(value, min, max, suffix, onCommit, label) {
     return h('span', { class: 'row tight' },
       h('input', {
@@ -221,7 +233,7 @@
     const box = section('Full-screen reminder',
       h('p', { class: 'dialog-message', text: 'At the exact start time of a task that has the full-screen alert switched on, a full-screen reminder covers the screen so it cannot be missed. It stays until you click a button.' }),
       h('div', { class: 'settings-grid' },
-        row('Full-screen alerts', toggle('Allow full-screen alerts', WW.state.settings.fullScreenAlerts, (v) => save({ fullScreenAlerts: v }), 'Each task also has its own switch in the task form. With this off, no full-screen alert appears.')),
+        row('Full-screen alerts', onOffSwitch('Full-screen reminders', WW.state.settings.fullScreenAlerts, (v) => save({ fullScreenAlerts: v }), 'Each task also has its own switch in the task form. With this off, no full-screen alert appears.')),
         row('New tasks', toggle('Switch the full-screen alert on for new tasks', WW.state.settings.fullScreenDefaultForNewTasks, (v) => save({ fullScreenDefaultForNewTasks: v }))),
         row('Screens', h('select', { class: 'sel-auto', 'aria-label': 'Screens', onchange: (e) => save({ alertScreens: e.target.value }) },
           h('option', { value: 'all', text: 'All screens', selected: WW.state.settings.alertScreens === 'all' }),
@@ -302,7 +314,7 @@
 
       section('Reminders & Notifications',
         h('div', { class: 'settings-grid' },
-          row('Notifications', toggle('Show notifications', s.notificationsEnabled, (v) => save({ notificationsEnabled: v }))),
+          row('Notifications', onOffSwitch('Windows notifications', s.notificationsEnabled, (v) => save({ notificationsEnabled: v }), 'Reminder pop-ups from Windows. With this off, no pop-up appears (full-screen reminders have their own switch).')),
           row('Sound', toggle('Play a sound', s.soundEnabled, (v) => save({ soundEnabled: v }))),
           row('Default reminder', h('div', {}, numberField(s.defaultReminderOffsetMinutes, 0, 10080, 'minutes before the start', (n) => save({ defaultReminderOffsetMinutes: n }), 'Default reminder minutes'),
             h('p', { class: 'hint', text: 'Used when a task has reminders turned on but no times added.' }))),

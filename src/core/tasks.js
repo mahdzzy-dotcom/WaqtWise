@@ -16,7 +16,8 @@
 //     exceptions: ['2026-11-13'],            // excluded occurrence dates
 //     additions: ['2026-11-14'],             // extra one-off occurrence dates
 //     overrides: { '2026-10-09': { start: {...} } },   // single-occurrence edits
-//     completions: { '2026-10-02': true }    // done / not done PER occurrence
+//     completions: { '2026-10-02': true },   // done / not done PER occurrence
+//     completedAt: { '2026-10-02': '2026-10-02T08:41:00.000Z' }   // when it was ticked (kept from the day this was added)
 //   }
 //
 // Derived values (end time, zone, occurrences) are never stored on the task.
@@ -130,6 +131,7 @@ function createTask(input) {
     additions: [],
     overrides: {},
     completions: {},
+    completedAt: {},
   };
   return assertValid(task);
 }
@@ -304,10 +306,18 @@ function placementNote(provider, start, enteredDateKey) {
 
 // ---- Completion and one-off additions ----------------------------------------------------------
 
-function setCompletion(task, dateKey, done) {
+// Marks an occurrence done or not done. The moment it was ticked is remembered (for statistics);
+// ticking something that is already done keeps the first moment.
+function setCompletion(task, dateKey, done, when = new Date()) {
   const updated = clone(task);
-  if (done) updated.completions[dateKey] = true;
-  else delete updated.completions[dateKey];
+  updated.completedAt = updated.completedAt || {};
+  if (done) {
+    updated.completions[dateKey] = true;
+    if (!updated.completedAt[dateKey]) updated.completedAt[dateKey] = new Date(when).toISOString();
+  } else {
+    delete updated.completions[dateKey];
+    delete updated.completedAt[dateKey];
+  }
   return updated;
 }
 
@@ -423,6 +433,7 @@ function editTask(task, scope, dateKey, patch, options = {}) {
   updated.additions = task.additions.filter((k) => before(k, dateKey));
   updated.overrides = filterMap(task.overrides, (k) => before(k, dateKey));
   updated.completions = filterMap(task.completions, (k) => before(k, dateKey));
+  updated.completedAt = filterMap(task.completedAt || {}, (k) => before(k, dateKey));
 
   const created = { ...clone(task), ...clone(fields) };
   created.id = options.newId;
@@ -436,6 +447,7 @@ function editTask(task, scope, dateKey, patch, options = {}) {
     fields
   );
   created.completions = filterMap(task.completions, (k) => atOrAfter(k, dateKey));
+  created.completedAt = filterMap(task.completedAt || {}, (k) => atOrAfter(k, dateKey));
 
   return { updated: assertValid(updated), created: assertValid(created) };
 }
@@ -456,6 +468,7 @@ function deleteOccurrences(task, scope, dateKey, options = {}) {
     }
     delete updated.overrides[dateKey];
     delete updated.completions[dateKey];
+    if (updated.completedAt) delete updated.completedAt[dateKey];
     return updated;
   }
 
@@ -467,6 +480,7 @@ function deleteOccurrences(task, scope, dateKey, options = {}) {
   updated.additions = task.additions.filter((k) => before(k, dateKey));
   updated.overrides = filterMap(task.overrides, (k) => before(k, dateKey));
   updated.completions = filterMap(task.completions, (k) => before(k, dateKey));
+  updated.completedAt = filterMap(task.completedAt || {}, (k) => before(k, dateKey));
   return updated;
 }
 

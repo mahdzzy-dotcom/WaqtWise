@@ -14,7 +14,7 @@ const {
   occurrencesForPlanningDay, computeDayLayout, currentPlanningDayKey, getOccurrences, buildOccurrence,
   startAtDate, resolveStart, computeEnd, placementNote, setCompletion, editTask, deleteOccurrences,
   dependencyProblem, findDependents, followsTransitively, freezeDependents,
-  remindersInWindow, reminderOffsets, createPrayerProvider,
+  remindersInWindow, reminderOffsets, createPrayerProvider, computeStats,
   addDaysToKey, dateKey, formatTime12, formatDuration, formatKeyShort, weekdayOfKey, parseDateKey, isValidKey,
 } = core;
 
@@ -201,6 +201,7 @@ class PlannerService {
           leftPct: ((from - z.start.getTime()) / span) * 100,
           widthPct: Math.max(((to - from) / span) * 100, 0.8),
           color: category ? category.color : '',
+          title: `${o.title} · ${formatTime12(o.start)} – ${formatTime12(o.end)}`,
           done: o.done,
         };
       });
@@ -268,6 +269,18 @@ class PlannerService {
       planningLine: `Planning Day: ${formatKeyShort(planningKey)} → ${formatKeyShort(endKey)}`,
       zones,
     };
+  }
+
+  // The Statistics screen. query: { range: 'day'|'week'|'month'|'year'|'custom', anchorKey, fromKey, toKey }.
+  getStats(query) {
+    return computeStats({
+      provider: this.provider(),
+      tasks: this.data.tasks,
+      categories: this.data.categories,
+      options: this.recurrenceOptions(),
+      now: this.now(),
+      query: query || {},
+    });
   }
 
   // Next reminders, for the bell.
@@ -573,7 +586,7 @@ class PlannerService {
         throw new Error('To switch between repeating and not repeating, choose "All occurrences".');
       }
       const replacement = createTask({ id: old.id, ...fields, recurrence, date });
-      updated = { ...replacement, completions: copy(old.completions) };
+      updated = { ...replacement, completions: copy(old.completions), completedAt: copy(old.completedAt || {}) };
     } else if (!wasRecurring) {
       ({ updated } = editTask(old, 'all', key, { ...fields, date }));
     } else {
@@ -669,7 +682,7 @@ class PlannerService {
 
   setDone({ taskId, dateKey: key, done }) {
     const task = this.findTask(taskId);
-    const updated = setCompletion(task, key, Boolean(done));
+    const updated = setCompletion(task, key, Boolean(done), this.now());
     this.data.tasks = this.data.tasks.map((t) => (t.id === taskId ? updated : t));
     this.changed();
     return { ok: true };
@@ -797,7 +810,7 @@ class PlannerService {
 
 // The names the window is allowed to call.
 const PUBLIC_METHODS = [
-  'bootstrap', 'getDay', 'getUpcoming', 'getMissed', 'dismissMissed', 'clearMissed', 'newTaskDefaults', 'getTaskForEdit', 'previewForm', 'saveTask',
+  'bootstrap', 'getDay', 'getStats', 'getUpcoming', 'getMissed', 'dismissMissed', 'clearMissed', 'newTaskDefaults', 'getTaskForEdit', 'previewForm', 'saveTask',
   'getReferenceChoices', 'getDeleteImpact', 'getAlertPreset', 'deleteTask', 'setDone', 'duplicateTask', 'getSettings', 'saveSettings', 'addCategory', 'updateCategory',
   'deleteCategory',
 ];

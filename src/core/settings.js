@@ -40,6 +40,21 @@ const METHOD_LABELS = {
 const THEMES = ['light', 'dark', 'system'];
 
 // Sounds made inside the app (no sound files). The names are played by src/renderer/sounds.js.
+// The charts on the Statistics screen, in their default order. Which ones are shown (and in what order) is a setting.
+const STATS_CHARTS = [
+  { id: 'kpi-rate', title: 'Completion rate', about: 'Share of counted tasks that are done' },
+  { id: 'kpi-done', title: 'Tasks done', about: 'How many tasks were done, out of how many' },
+  { id: 'kpi-streak', title: 'Current streak', about: 'Days in a row with at least 70% done' },
+  { id: 'kpi-time', title: 'Planned time', about: 'Total time of the counted tasks' },
+  { id: 'bars', title: 'Done vs planned', about: 'Bars of done and planned tasks' },
+  { id: 'zones', title: 'By zone', about: 'Share done in each of the 5 zones' },
+  { id: 'heat', title: 'Calendar heat map', about: 'Every day of the month or year as a colour' },
+  { id: 'trend', title: 'Completion trend', about: 'How the completion rate moves over time' },
+  { id: 'categories', title: 'By category', about: 'Share done and planned time per category' },
+  { id: 'late', title: 'Needs attention', about: 'Tasks not done and already past their time' },
+];
+const STATS_CHART_IDS = STATS_CHARTS.map((c) => c.id);
+
 const DONE_SOUNDS = ['chime', 'pop', 'ding', 'sparkle', 'off'];
 const ALERT_SOUNDS = ['bell', 'alarm', 'rising', 'pulse', 'off'];
 
@@ -181,6 +196,8 @@ const DEFAULT_SETTINGS = {
   doneSound: 'chime',
   doneSoundVolume: 60, // 0-100
   alertAppearance: DEFAULT_ALERT_APPEARANCE,
+  // Statistics screen: the charts that are shown, in order (see STATS_CHARTS)
+  statsCharts: STATS_CHART_IDS.slice(),
 };
 
 function isWholeNumber(n, min, max) {
@@ -217,6 +234,12 @@ function validateSettings(settings) {
   if ('alertSound' in s && !ALERT_SOUNDS.includes(s.alertSound)) errors.push('Choose one of the sounds in the list');
   for (const key of ['doneSoundVolume', 'alertSoundVolume']) {
     if (key in s && !isWholeNumber(s[key], 0, 100)) errors.push('Volume must be a whole number from 0 to 100');
+  }
+  if ('statsCharts' in s) {
+    const list = s.statsCharts;
+    if (!Array.isArray(list) || !list.every((id) => STATS_CHART_IDS.includes(id)) || new Set(list).size !== list.length) {
+      errors.push('Choose charts from the list, each one only once');
+    }
   }
   if ('alertScreens' in s && !ALERT_SCREENS.includes(s.alertScreens)) errors.push('Choose all screens or the main screen');
   if ('alertAppearance' in s) errors.push(...validateAppearance(s.alertAppearance));
@@ -269,6 +292,8 @@ module.exports = {
   THEMES,
   DONE_SOUNDS,
   ALERT_SOUNDS,
+  STATS_CHARTS,
+  STATS_CHART_IDS,
   DEFAULT_SETTINGS,
   validateSettings,
   mergeSettings,

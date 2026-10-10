@@ -6,6 +6,7 @@ module.exports = {
   ...require('./layout'),
   ...require('./recurrence'),
   ...require('./tasks'),
+  ...require('./stats'),
   ...require('./reminders'),
   ...require('./reminder-engine'),
   ...require('./cities'),

@@ -132,7 +132,9 @@
     z.segments.forEach((s) =>
       fill.appendChild(h('div', {
         class: `seg ${s.done ? 'done' : ''}`,
-        style: { left: `${s.leftPct}%`, width: `${s.widthPct}%` },
+        title: s.title,
+        // Each task piece takes its category's color (the zone color when it has no category).
+        style: Object.assign({ left: `${s.leftPct}%`, width: `${s.widthPct}%` }, s.color ? { background: s.color } : {}),
       })));
     const timeline = h('div', { class: 'timeline' }, fill);
     z.confSegs.forEach((c) =>
@@ -271,6 +273,7 @@
   WW.afterChange = async function afterChange() {
     refreshBell();
     if (WW.state.view === 'daily') await WW.showDay(WW.state.dayKey);
+    else if (WW.state.view === 'stats') await WW.showStats();
   };
 
   // ---- Bell and menu ----------------------------------------------------------------------------------------------
@@ -355,6 +358,7 @@
         h('div', { class: 'drawer-title', text: 'WaqtWise' }),
         h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Close menu', onclick: closeDrawer }, WW.icon('close', 18, 2))),
       item('calendar', 'Daily View', () => WW.showDaily(), WW.state.view === 'daily'),
+      item('chart', 'Statistics', () => WW.showStats({ range: 'week' }), WW.state.view === 'stats'),
       item('gear', 'Settings', () => WW.showSettings(), WW.state.view === 'settings'),
       h('div', { class: 'drawer-sep' }),
       h('div', { class: 'drawer-label', text: 'YOUR DATA' }),
@@ -407,6 +411,7 @@
     Object.assign(WW.state, { settings: boot.settings, categories: boot.categories, cities: boot.cities, methods: boot.methods, todayKey: boot.currentPlanningDayKey });
     WW.applyTheme(boot.settings.theme);
     if (WW.state.view === 'settings') WW.renderSettings();
+    else if (WW.state.view === 'stats') await WW.showStats();
     else await WW.showDay(WW.state.todayKey);
   }
 
@@ -523,7 +528,7 @@
     hideSplash();
 
     // The window keeps itself fresh: current zone, overdue marks, and changes made elsewhere.
-    setInterval(() => { if (WW.state.view === 'daily' && !anyDialogOpen()) WW.afterChange(); }, 30000);
+    setInterval(() => { if ((WW.state.view === 'daily' || WW.state.view === 'stats') && !anyDialogOpen()) WW.afterChange(); }, 30000);
     window.addEventListener('focus', () => { if (!anyDialogOpen()) WW.afterChange(); });
 
     if (window.api && window.api.on) {

@@ -66,6 +66,16 @@ function normalizeCategories(raw, warnings) {
   return result;
 }
 
+// Times when occurrences were ticked: keep only date key -> valid date text.
+function cleanCompletedAt(raw) {
+  const out = {};
+  if (!isPlainObject(raw)) return out;
+  for (const key of Object.keys(raw)) {
+    if (typeof raw[key] === 'string' && !Number.isNaN(Date.parse(raw[key]))) out[key] = raw[key];
+  }
+  return out;
+}
+
 // Make a task read from a file safe to use: fill missing fields, then validate it.
 function normalizeTask(raw) {
   if (!isPlainObject(raw)) return { error: 'not a task' };
@@ -84,6 +94,7 @@ function normalizeTask(raw) {
     additions: Array.isArray(raw.additions) ? raw.additions.filter((k) => typeof k === 'string') : [],
     overrides: isPlainObject(raw.overrides) ? raw.overrides : {},
     completions: isPlainObject(raw.completions) ? raw.completions : {},
+    completedAt: cleanCompletedAt(raw.completedAt),
   };
   if (typeof raw.continuedFrom === 'string' && raw.continuedFrom !== '') task.continuedFrom = raw.continuedFrom;
   const errors = validateTask(task);
