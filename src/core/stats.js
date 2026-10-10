@@ -297,7 +297,7 @@ function computeStats({ provider, tasks, categories, options, now, query, weekSt
       const started = new Date(e.startMs);
       return {
         taskId: e.taskId, dateKey: e.dateKey, title: e.title, zoneName: ZONE_NAMES[e.zone - 1],
-        whenLabel: `${WEEKDAYS[started.getDay()]} ${formatKeyShort(e.key)} · ${formatTime12(started)}`,
+        whenLabel: `${WEEKDAYS[weekdayOfKey(e.key)]} ${formatKeyShort(e.key)} · ${formatTime12(started)}`,
         ageLabel: ago <= 0 ? 'Today' : ago === 1 ? '1 day late' : `${ago} days late`,
       };
     }),

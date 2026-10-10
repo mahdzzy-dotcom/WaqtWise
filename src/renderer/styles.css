@@ -38,11 +38,11 @@
   --heat-empty: #eef4f6;
   color-scheme: light;
 }
-:root .z1 { --zf: #2b8fd6; --zon: #04182a; }
-:root .z2 { --zf: #d99a00; --zon: #241a00; }
-:root .z3 { --zf: #e0782a; --zon: #2a1200; }
-:root .z4 { --zf: #b83b76; --zon: #ffffff; }
-:root .z5 { --zf: #5b57c9; --zon: #ffffff; }
+:root .z1 { --zf: #3f8fae; --zon: #ffffff; }
+:root .z2 { --zf: #d4a23c; --zon: #241a00; }
+:root .z3 { --zf: #c9794a; --zon: #ffffff; }
+:root .z4 { --zf: #a24a6e; --zon: #ffffff; }
+:root .z5 { --zf: #3e4a8a; --zon: #ffffff; }
 
 :root[data-theme='dark'] {
   --bg: #071a2e;
@@ -64,11 +64,11 @@
   --heat-empty: #0f2f4d;
   color-scheme: dark;
 }
-:root[data-theme='dark'] .z1 { --zf: #5db4f2; --zon: #06202f; }
-:root[data-theme='dark'] .z2 { --zf: #f0c14b; --zon: #2a2000; }
-:root[data-theme='dark'] .z3 { --zf: #f59a55; --zon: #2e1600; }
-:root[data-theme='dark'] .z4 { --zf: #ee7fb0; --zon: #2e0a1b; }
-:root[data-theme='dark'] .z5 { --zf: #a9a5f5; --zon: #14123d; }
+:root[data-theme='dark'] .z1 { --zf: #69a8c0; --zon: #06202f; }
+:root[data-theme='dark'] .z2 { --zf: #ddb667; --zon: #2a2000; }
+:root[data-theme='dark'] .z3 { --zf: #d59672; --zon: #2e1600; }
+:root[data-theme='dark'] .z4 { --zf: #b6728e; --zon: #ffffff; }
+:root[data-theme='dark'] .z5 { --zf: #6872a4; --zon: #ffffff; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
@@ -91,11 +91,11 @@
     --heat-empty: #0f2f4d;
     color-scheme: dark;
   }
-  :root:not([data-theme='light']):not([data-theme='dark']) .z1 { --zf: #5db4f2; --zon: #06202f; }
-  :root:not([data-theme='light']):not([data-theme='dark']) .z2 { --zf: #f0c14b; --zon: #2a2000; }
-  :root:not([data-theme='light']):not([data-theme='dark']) .z3 { --zf: #f59a55; --zon: #2e1600; }
-  :root:not([data-theme='light']):not([data-theme='dark']) .z4 { --zf: #ee7fb0; --zon: #2e0a1b; }
-  :root:not([data-theme='light']):not([data-theme='dark']) .z5 { --zf: #a9a5f5; --zon: #14123d; }
+  :root:not([data-theme='light']):not([data-theme='dark']) .z1 { --zf: #69a8c0; --zon: #06202f; }
+  :root:not([data-theme='light']):not([data-theme='dark']) .z2 { --zf: #ddb667; --zon: #2a2000; }
+  :root:not([data-theme='light']):not([data-theme='dark']) .z3 { --zf: #d59672; --zon: #2e1600; }
+  :root:not([data-theme='light']):not([data-theme='dark']) .z4 { --zf: #b6728e; --zon: #ffffff; }
+  :root:not([data-theme='light']):not([data-theme='dark']) .z5 { --zf: #6872a4; --zon: #ffffff; }
 }
 
 * { box-sizing: border-box; }

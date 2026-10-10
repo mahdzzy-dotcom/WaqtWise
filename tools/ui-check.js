@@ -80,6 +80,13 @@ async function setTime(page, hour, minute, ampm) {
     await skipApp.page.waitForSelector('#splash', { state: 'detached', timeout: 2000 });
     await skipApp.browser.close();
   });
+  await step('a key press skips the splash too', async () => {
+    const keyApp = await openApp({ playwright, service: createService(), executablePath, width: 1100, height: 700, keepSplash: true });
+    await keyApp.page.waitForSelector('.zone');
+    await keyApp.page.keyboard.press('Space');
+    await keyApp.page.waitForSelector('#splash', { state: 'detached', timeout: 2000 });
+    await keyApp.browser.close();
+  });
 
   console.log('Daily View');
   await step('shows the header, Hijri date, Planning Day line and 5 zones', async () => {
@@ -469,9 +476,11 @@ async function setTime(page, hour, minute, ampm) {
     assert.notEqual(await page.getAttribute('#theme-btn', 'aria-label'), before);
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, 'daily-dark');
+    if (shotDir) await page.screenshot({ path: `${shotDir}/daily-full-dark.png`, fullPage: true });
     await page.click('#theme-btn');
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, 'daily-light');
+    if (shotDir) await page.screenshot({ path: `${shotDir}/daily-full-light.png`, fullPage: true });
     await page.waitForTimeout(150);
     assert.equal(await page.getAttribute('#theme-btn', 'aria-label'), before);
   });
@@ -822,6 +831,16 @@ async function setTime(page, hour, minute, ampm) {
     assert.equal(await sp.$$eval('.heat-day.sel', (els) => els.length), 7);
     assert.equal(await sp.isDisabled('button[aria-label="Next period"]'), true, 'cannot go past this week');
     await shot(sp, 'stats-week');
+    // narrow window: the arrows sit side by side under the title
+    await sp.setViewportSize({ width: 640, height: 800 });
+    const box = async (selector) => sp.locator(selector).boundingBox();
+    const title = await box('.stats-head .day-title');
+    const prev = await box('button[aria-label="Previous period"]');
+    const next = await box('button[aria-label="Next period"]');
+    assert.equal(Math.round(prev.y), Math.round(next.y), 'the two arrows are on the same row');
+    assert.ok(prev.y > title.y + title.height - 2, 'the arrows are under the title');
+    assert.ok(next.x > prev.x + prev.width - 1, 'the next arrow is to the right of the previous one');
+    await sp.setViewportSize({ width: 1000, height: 800 });
 
     await sp.click('.stats-seg button[data-range="day"]');
     await sp.waitForFunction(() => document.querySelector('.stats-seg button.on').dataset.range === 'day');
@@ -951,10 +970,17 @@ async function setTime(page, hour, minute, ampm) {
     await first.page.waitForSelector('.welcome');
     assert.match(await first.page.textContent('.welcome'), /Make every waqt count, wisely\./);
     assert.equal(await first.page.inputValue('#welcome-city'), 'Cairo');
+    // it is a real dialog: the app behind it cannot be reached
+    assert.equal(await first.page.evaluate(() => document.querySelector('.topbar').inert), true);
+    for (let i = 0; i < 6; i++) {
+      await first.page.keyboard.press('Tab');
+      assert.equal(await first.page.evaluate(() => Boolean(document.activeElement.closest('.welcome'))), true, 'Tab stays inside the welcome screen');
+    }
     await first.page.selectOption('#welcome-city', 'Alexandria');
     await shot(first.page, 'welcome');
     await first.page.click('button:text-is("Start planning")');
     await first.page.waitForSelector('.welcome', { state: 'detached' });
+    assert.equal(await first.page.evaluate(() => document.querySelector('.topbar').inert), false, 'the app is usable again');
     assert.equal(fresh.getSettings().cityName, 'Alexandria');
     assert.equal(fresh.getSettings().welcomeShown, true);
     assert.deepEqual(realErrors(first.errors), []);

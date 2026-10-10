@@ -373,3 +373,11 @@ test('The week follows the first day chosen in Settings', () => {
   // a Monday-first week that starts today's Saturday-first week: Saturday belongs to the Monday week before
   assert.equal(resolveRange({ range: 'week', anchorKey: TODAY }, TODAY, 1).start, '2026-10-05');
 });
+
+test('An after-midnight task is listed under the weekday of the day it belongs to', () => {
+  // 2:00 AM on Tuesday Oct 6 belongs to Monday Oct 5 (the day starts at Fajr)
+  const night = task({ title: 'Night reading', start: fixed('02:00'), date: '2026-10-06' });
+  const item = stats([night], { range: 'week' }).late.items[0];
+  assert.equal(item.dateKey, '2026-10-06');
+  assert.match(item.whenLabel, /^Mon Oct 5 · 2:00 AM$/);
+});

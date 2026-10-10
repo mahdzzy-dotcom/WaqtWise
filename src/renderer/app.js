@@ -461,6 +461,7 @@
       onclick: async () => {
         try {
           WW.state.settings = await WW.call('saveSettings', { cityName: city, welcomeShown: true });
+          screen.releaseBehind();
           screen.remove();
           await WW.showDay(WW.state.todayKey);
         } catch (error) {
@@ -482,8 +483,20 @@
         select,
         h('p', { class: 'hint', text: 'You can change this later in Settings. Everything stays on this computer.' }),
         start));
+    // A real dialog: nothing behind it can be reached with Tab or the mouse until the city is chosen.
+    const behind = [...document.body.children].filter((el) => el.tagName !== 'SCRIPT' && el.id !== 'splash');
+    behind.forEach((el) => { el.inert = true; });
     document.body.appendChild(screen);
     start.focus();
+    screen.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab') return;
+      const items = [...screen.querySelectorAll('select, button')];
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
+    screen.releaseBehind = () => behind.forEach((el) => { el.inert = false; });
   };
 
   // The splash covers the window for a moment at every start; a click or key skips it.
@@ -497,9 +510,14 @@
       splash.classList.add('hide');
       setTimeout(() => splash.remove(), 500);
     };
-    setTimeout(leave, Math.max(0, SPLASH_MS - (Date.now() - splashStarted)));
-    const skip = () => { splash.removeEventListener('click', skip); leave(); };
+    setTimeout(() => skip(), Math.max(0, SPLASH_MS - (Date.now() - splashStarted)));
+    const skip = () => {
+      splash.removeEventListener('click', skip);
+      document.removeEventListener('keydown', skip);
+      leave();
+    };
     splash.addEventListener('click', skip);
+    document.addEventListener('keydown', skip);
   }
 
   // ---- Start-up -------------------------------------------------------------------------------------------------------------
