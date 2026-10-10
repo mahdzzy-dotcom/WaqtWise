@@ -266,6 +266,9 @@ main { width: 100%; margin: 0; padding: 6px clamp(16px, 3vw, 56px) 64px; }
 .zone { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; min-width: 0; }
 .zone-band { background: var(--zf); color: var(--zon); padding: 16px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; }
 .zone-band-left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.zone-icon { display: inline-flex; flex: none; }
+.zone-label { display: inline-flex; align-items: center; gap: 8px; }
+.zone-label .zone-icon { color: var(--zf); }
 .zone-name { margin: 0; font-size: 19px; font-weight: 700; }
 .zone-range { font-size: 15px; font-weight: 700; }
 .band-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 99px; background: var(--zon); color: var(--zf); }

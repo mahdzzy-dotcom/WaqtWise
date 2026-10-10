@@ -158,6 +158,7 @@
     return h('section', { class: `zone z${z.index} ${z.isCurrent ? 'current' : ''}`, 'aria-label': z.name },
       h('div', { class: 'zone-band' },
         h('div', { class: 'zone-band-left' },
+          WW.zoneIcon(z.index, 26),
           h('h2', { class: 'zone-name' }, z.name),
           z.isCurrent ? h('span', { class: 'band-chip now-chip', text: 'NOW' }) : null,
           z.conflictCount ? h('span', { class: 'band-chip conflict-chip' }, WW.icon('warn', 13, 2.6), conflictText) : null),

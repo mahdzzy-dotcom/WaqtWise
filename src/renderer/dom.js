@@ -39,6 +39,27 @@
   };
   WW.iconNames = Object.keys(ICONS);
 
+  // One small sign for each of the five zones (trusted constant markup). They are drawn in the zone's own colour.
+  const ZONE_ICONS = {
+    // 1 Fajr to Dhuhr: a simple sunrise
+    1: '<path d="M5.5 16a6.5 6.5 0 0 1 13 0z" fill="currentColor" stroke="none"/><path d="M3 19.5h18"/><path d="M12 4.5v2.5M5.2 8.7l1.7 1.7M18.8 8.7l-1.7 1.7"/>',
+    // 2 Dhuhr to Asr: the sun high up
+    2: '<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
+    // 3 Asr to Maghrib: a leaning sun, lower than noon
+    3: '<circle cx="15" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M15 5.2v2M7.2 13h2M9.5 7.5l1.4 1.4M20.5 7.5l-1.4 1.4"/><path d="M3 20.5h18"/>',
+    // 4 Maghrib to Isha: the sun touching the horizon
+    4: '<path d="M6 17a6 6 0 0 1 12 0z" fill="currentColor" stroke="none"/><path d="M3 17h18M6 20.5h12"/>',
+    // 5 Isha to Fajr: a crescent and a small four-point star
+    5: '<path d="M15.5 4.5a8 8 0 1 0 4 14.2 8.4 8.4 0 0 1-4-14.2z" fill="currentColor" stroke="none"/><path d="M18.6 2l1.1 2.7 2.7 1.1-2.7 1.1-1.1 2.7-1.1-2.7-2.7-1.1 2.7-1.1z" fill="currentColor" stroke="none"/>',
+  };
+  WW.zoneIcon = function zoneIcon(index, size) {
+    const span = document.createElement('span');
+    span.className = 'zone-icon';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML = `<svg width="${size || 24}" height="${size || 24}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ZONE_ICONS[index] || ''}</svg>`;
+    return span;
+  };
+
   WW.clear = function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
     return el;

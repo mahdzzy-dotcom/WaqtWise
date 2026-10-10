@@ -115,7 +115,7 @@
       h('h2', { text: 'By zone' }), h('div', { class: 'sub', text: 'Share of tasks done in each zone' }),
       h('div', { class: 'bars-list' }, data.zones.map((z) =>
         h('div', { class: `z${z.index}` },
-          h('div', { class: 'row-top' }, h('span', { text: z.name }), h('span', { text: `${z.pct}%` })),
+          h('div', { class: 'row-top' }, h('span', { class: 'zone-label' }, WW.zoneIcon(z.index, 18), z.name), h('span', { text: `${z.pct}%` })),
           h('div', { class: 'meter' }, h('div', { style: { width: `${z.pct}%`, background: 'var(--zf)' } })),
           h('div', { class: 'row-note', text: `${z.done} of ${z.total} tasks` })))));
   }

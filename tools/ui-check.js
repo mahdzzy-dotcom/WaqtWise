@@ -108,6 +108,9 @@ async function setTime(page, hour, minute, ampm) {
     assert.deepEqual(current, ['Fajr → Dhuhr']);
     assert.equal((await page.$$('.now-chip')).length, 1);
   });
+  await step('each zone has its own sign in the coloured band', async () => {
+    assert.equal(await page.locator('.zone-band .zone-icon svg').count(), 5);
+  });
   await step('shows the three duration figures for every zone, empty zones included', async () => {
     assert.equal(await figure(page, 1, 'Total'), '6h 43m');
     assert.equal(await figure(page, 4, 'Total'), '1h 20m');
